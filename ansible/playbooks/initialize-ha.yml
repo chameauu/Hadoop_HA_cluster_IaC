@@ -1,0 +1,82 @@
+---
+# Initialize Hadoop HA cluster
+
+- name: Format NameNode on namenode1
+  hosts: namenode1
+  become: yes
+  tasks:
+    - name: Check if NameNode is already formatted
+      stat:
+        path: "{{ hadoop_install_dir }}/hdfs/namenode/current"
+      register: nn_formatted
+
+    - name: Format NameNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs namenode -format -clusterId {{ cluster_name }} -force
+      args:
+        executable: /bin/bash
+      when: not nn_formatted.stat.exists
+      register: format_result
+
+    - name: Display format result
+      debug:
+        var: format_result.stdout_lines
+      when: format_result is defined
+
+    - name: Start NameNode on namenode1
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon start namenode
+      args:
+        executable: /bin/bash
+
+    - name: Wait for NameNode to start
+      wait_for:
+        port: "{{ dfs_namenode_rpc_port }}"
+        delay: 5
+        timeout: 60
+
+- name: Bootstrap standby NameNode on namenode2
+  hosts: namenode2
+  become: yes
+  tasks:
+    - name: Check if standby NameNode is already bootstrapped
+      stat:
+        path: "{{ hadoop_install_dir }}/hdfs/namenode/current"
+      register: standby_bootstrapped
+
+    - name: Bootstrap standby NameNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs namenode -bootstrapStandby -force
+      args:
+        executable: /bin/bash
+      when: not standby_bootstrapped.stat.exists
+      register: bootstrap_result
+
+    - name: Display bootstrap result
+      debug:
+        var: bootstrap_result.stdout_lines
+      when: bootstrap_result is defined
+
+- name: Format ZooKeeper for automatic failover
+  hosts: namenode1
+  become: yes
+  tasks:
+    - name: Format ZKFC
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs zkfc -formatZK -force
+      args:
+        executable: /bin/bash
+      register: zkfc_format
+      ignore_errors: yes
+
+    - name: Display ZKFC format result
+      debug:
+        var: zkfc_format.stdout_lines

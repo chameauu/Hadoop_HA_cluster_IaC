@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>dfs.nameservices</name>
+        <value>{{ nameservice_id }}</value>
+    </property>
+    <property>
+        <name>dfs.ha.namenodes.{{ nameservice_id }}</name>
+        <value>nn1,nn2</value>
+    </property>
+    <property>
+        <name>dfs.namenode.rpc-address.{{ nameservice_id }}.nn1</name>
+        <value>{{ namenode1_ip }}:{{ dfs_namenode_rpc_port }}</value>
+    </property>
+    <property>
+        <name>dfs.namenode.rpc-address.{{ nameservice_id }}.nn2</name>
+        <value>{{ namenode2_ip }}:{{ dfs_namenode_rpc_port }}</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-address.{{ nameservice_id }}.nn1</name>
+        <value>{{ namenode1_ip }}:{{ dfs_namenode_http_port }}</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-address.{{ nameservice_id }}.nn2</name>
+        <value>{{ namenode2_ip }}:{{ dfs_namenode_http_port }}</value>
+    </property>
+    <property>
+        <name>dfs.namenode.shared.edits.dir</name>
+        <value>qjournal://{{ namenode1_ip }}:{{ dfs_journalnode_rpc_port }};{{ namenode2_ip }}:{{ dfs_journalnode_rpc_port }};{{ datanode1_ip }}:{{ dfs_journalnode_rpc_port }}/{{ nameservice_id }}</value>
+    </property>
+    <property>
+        <name>dfs.client.failover.proxy.provider.{{ nameservice_id }}</name>
+        <value>org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider</value>
+    </property>
+    <property>
+        <name>dfs.ha.fencing.methods</name>
+        <value>sshfence</value>
+    </property>
+    <property>
+        <name>dfs.ha.fencing.ssh.private-key-files</name>
+        <value>/home/{{ hadoop_user }}/.ssh/id_rsa</value>
+    </property>
+    <property>
+        <name>dfs.ha.automatic-failover.enabled</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>dfs.journalnode.edits.dir</name>
+        <value>{{ hadoop_install_dir }}/journal</value>
+    </property>
+    <property>
+        <name>dfs.replication</name>
+        <value>{{ dfs_replication }}</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file://{{ hadoop_install_dir }}/hdfs/datanode</value>
+    </property>
+</configuration>

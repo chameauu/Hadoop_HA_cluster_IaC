@@ -1,0 +1,72 @@
+---
+# ZooKeeper installation and configuration
+
+- name: Check if ZooKeeper is already downloaded in shared folder
+  stat:
+    path: "/vagrant/downloads/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
+  register: zk_archive
+
+- name: Download ZooKeeper to shared folder (only once for all VMs)
+  get_url:
+    url: "{{ zookeeper_download_url }}"
+    dest: "/vagrant/downloads/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
+    mode: '0644'
+  when: not zk_archive.stat.exists
+  run_once: true
+
+- name: Check if ZooKeeper is already extracted
+  stat:
+    path: "/opt/apache-zookeeper-{{ zookeeper_version }}-bin"
+  register: zk_extracted
+
+- name: Extract ZooKeeper
+  unarchive:
+    src: "/vagrant/downloads/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
+    dest: /opt/
+    remote_src: yes
+  when: not zk_extracted.stat.exists
+
+- name: Create ZooKeeper symlink
+  file:
+    src: "/opt/apache-zookeeper-{{ zookeeper_version }}-bin"
+    dest: "{{ zookeeper_install_dir }}"
+    state: link
+
+- name: Create ZooKeeper data directory
+  file:
+    path: "{{ zookeeper_data_dir }}"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0755'
+
+- name: Set ZooKeeper myid
+  copy:
+    content: "{{ zookeeper_id }}"
+    dest: "{{ zookeeper_data_dir }}/myid"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'
+
+- name: Configure ZooKeeper zoo.cfg
+  template:
+    src: zoo.cfg.j2
+    dest: "{{ zookeeper_install_dir }}/conf/zoo.cfg"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'
+
+- name: Set ZooKeeper directory ownership
+  file:
+    path: "/opt/apache-zookeeper-{{ zookeeper_version }}-bin"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    recurse: yes
+
+- name: Set ZooKeeper symlink ownership
+  file:
+    path: "{{ zookeeper_install_dir }}"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    state: link
+    follow: no

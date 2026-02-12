@@ -1,0 +1,45 @@
+# Vagrant
+.vagrant/
+*.log
+.vscode/
+
+# Downloads
+downloads/*.tar.gz
+downloads/*.zip
+downloads
+
+# SSH Keys
+*.pub
+*.pem
+*_rsa
+*_rsa.pub
+
+# Ansible
+*.retry
+.ansible/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Books and large files
+*.epub
+*.pdf
+*.mobi
+
+vagrant/
+scripts/
+
+docs/

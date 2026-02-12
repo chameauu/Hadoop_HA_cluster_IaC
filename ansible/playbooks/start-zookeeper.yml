@@ -1,0 +1,35 @@
+---
+# Start ZooKeeper on all ZooKeeper nodes
+
+- name: Start ZooKeeper cluster
+  hosts: zookeeper
+  become: yes
+  tasks:
+    - name: Start ZooKeeper service
+      become_user: "{{ hadoop_user }}"
+      shell: "{{ zookeeper_install_dir }}/bin/zkServer.sh start"
+      args:
+        executable: /bin/bash
+      register: zk_start
+      
+    - name: Display ZooKeeper start status
+      debug:
+        var: zk_start.stdout_lines
+
+    - name: Wait for ZooKeeper to start
+      wait_for:
+        port: "{{ zookeeper_client_port }}"
+        delay: 2
+        timeout: 30
+
+    - name: Check ZooKeeper status
+      become_user: "{{ hadoop_user }}"
+      shell: "{{ zookeeper_install_dir }}/bin/zkServer.sh status"
+      args:
+        executable: /bin/bash
+      register: zk_status
+      ignore_errors: yes
+      
+    - name: Display ZooKeeper status
+      debug:
+        var: zk_status.stdout_lines

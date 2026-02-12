@@ -1,0 +1,60 @@
+---
+# Main playbook to set up Hadoop HA cluster
+
+- name: Setup common configuration on all nodes
+  hosts: all
+  become: yes
+  roles:
+    - common
+
+- name: Setup ZooKeeper cluster
+  hosts: zookeeper
+  become: yes
+  roles:
+    - zookeeper
+
+- name: Install Hadoop on all nodes
+  hosts: hadoop_cluster
+  become: yes
+  roles:
+    - hadoop-install
+
+- name: Configure NameNodes
+  hosts: namenodes
+  become: yes
+  roles:
+    - hadoop-namenode
+
+- name: Configure DataNodes
+  hosts: datanodes
+  become: yes
+  roles:
+    - hadoop-datanode
+
+- name: Setup Hadoop HA components
+  hosts: hadoop_cluster
+  become: yes
+  roles:
+    - hadoop-ha
+
+- name: Display cluster information
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Show completion message
+      debug:
+        msg:
+          - "===== HADOOP HA CLUSTER SETUP COMPLETE ====="
+          - ""
+          - "Next steps to start the cluster:"
+          - ""
+          - "1. Start ZooKeeper: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/start-zookeeper.yml"
+          - "2. Start JournalNodes: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/start-journalnodes.yml"
+          - "3. Initialize HA: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/initialize-ha.yml"
+          - "4. Start cluster: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/start-cluster.yml"
+          - ""
+          - "Web UIs:"
+          - "- Active NameNode: http://localhost:9870"
+          - "- Standby NameNode: http://localhost:9871"
+          - "- Active ResourceManager: http://localhost:8088"
+          - "- Standby ResourceManager: http://localhost:8089"

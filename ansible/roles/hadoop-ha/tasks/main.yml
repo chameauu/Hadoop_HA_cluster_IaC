@@ -1,0 +1,11 @@
+---
+# Hadoop HA setup tasks
+
+- name: Ensure journal directory exists
+  file:
+    path: "{{ hadoop_install_dir }}/journal"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0755'
+  when: inventory_hostname in groups['journalnodes']

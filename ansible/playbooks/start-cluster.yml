@@ -1,0 +1,232 @@
+---
+# Start Hadoop HA cluster services
+
+- name: Start NameNodes and ZKFC
+  hosts: namenodes
+  become: yes
+  serial: 1
+  tasks:
+    - name: Check if NameNode is running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q NameNode
+      register: nn_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start NameNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon start namenode
+      args:
+        executable: /bin/bash
+      when: nn_running.rc != 0
+
+    - name: Wait for NameNode to start
+      wait_for:
+        port: "{{ dfs_namenode_rpc_port }}"
+        delay: 5
+        timeout: 60
+
+    - name: Check if ZKFC is running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q DFSZKFailoverController
+      register: zkfc_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start ZKFC
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon start zkfc
+      args:
+        executable: /bin/bash
+      when: zkfc_running.rc != 0
+
+    - name: Check NameNode status
+      become_user: "{{ hadoop_user }}"
+      shell: "jps | grep -E 'NameNode|DFSZKFailoverController'"
+      register: nn_status
+      ignore_errors: yes
+
+    - name: Display NameNode status
+      debug:
+        msg: "{{ inventory_hostname }}: {{ nn_status.stdout_lines }}"
+
+- name: Start DataNodes
+  hosts: datanodes
+  become: yes
+  tasks:
+    - name: Check if DataNode is running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q DataNode
+      register: dn_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start DataNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon start datanode
+      args:
+        executable: /bin/bash
+      when: dn_running.rc != 0
+
+    - name: Wait for DataNode to start
+      wait_for:
+        port: 9866
+        delay: 3
+        timeout: 30
+
+    - name: Check DataNode status
+      become_user: "{{ hadoop_user }}"
+      shell: "jps | grep DataNode"
+      register: dn_status
+      ignore_errors: yes
+
+    - name: Display DataNode status
+      debug:
+        msg: "{{ inventory_hostname }}: {{ dn_status.stdout }}"
+
+- name: Start ResourceManagers
+  hosts: resourcemanagers
+  become: yes
+  serial: 1
+  tasks:
+    - name: Check if ResourceManager is running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q ResourceManager
+      register: rm_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start ResourceManager
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/yarn --daemon start resourcemanager 2>&1 | grep -v "Cannot set priority" || true
+      args:
+        executable: /bin/bash
+      when: rm_running.rc != 0
+      register: rm_start
+
+    - name: Wait a moment for ResourceManager to initialize
+      pause:
+        seconds: 3
+      when: rm_running.rc != 0
+
+    - name: Verify ResourceManager is actually running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q ResourceManager
+      register: rm_verify
+      failed_when: false
+      changed_when: false
+      when: rm_running.rc != 0
+
+    - name: Wait for ResourceManager port (only for active RM)
+      wait_for:
+        port: "{{ yarn_resourcemanager_port }}"
+        delay: 2
+        timeout: 30
+      when: rm_running.rc != 0 and rm_verify.rc == 0
+      ignore_errors: yes
+
+    - name: Check ResourceManager logs if failed
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        echo "=== Checking for ResourceManager process ==="
+        ps aux | grep -i "[r]esourcemanager" || echo "No ResourceManager process found"
+        echo ""
+        echo "=== Checking log files ==="
+        ls -lh {{ hadoop_install_dir }}/logs/*resourcemanager* 2>/dev/null || echo "No ResourceManager log files"
+        echo ""
+        echo "=== Last 50 lines of latest ResourceManager log ==="
+        find {{ hadoop_install_dir }}/logs -name "*resourcemanager*.log" -type f -exec tail -50 {} \; 2>/dev/null || echo "No log content"
+        echo ""
+        echo "=== Checking yarn-site.xml ==="
+        grep -A2 "yarn.resourcemanager.hostname" {{ hadoop_install_dir }}/etc/hadoop/yarn-site.xml | head -20
+      register: rm_logs
+      when: rm_start is defined and (rm_start.rc != 0 or rm_start.stderr != '')
+
+    - name: Display ResourceManager logs
+      debug:
+        var: rm_logs.stdout_lines
+      when: rm_logs is defined and rm_logs.stdout_lines is defined
+
+    - name: Check ResourceManager status
+      become_user: "{{ hadoop_user }}"
+      shell: "jps | grep ResourceManager"
+      register: rm_status
+      ignore_errors: yes
+
+    - name: Display ResourceManager status
+      debug:
+        msg: "{{ inventory_hostname }}: {{ rm_status.stdout }}"
+
+- name: Start NodeManagers
+  hosts: nodemanagers
+  become: yes
+  tasks:
+    - name: Check if NodeManager is running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q NodeManager
+      register: nm_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start NodeManager
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/yarn --daemon start nodemanager
+      args:
+        executable: /bin/bash
+      when: nm_running.rc != 0
+      register: nm_start
+      failed_when: nm_start.rc != 0 and 'Cannot set priority' not in nm_start.stderr
+
+    - name: Wait for NodeManager to start
+      wait_for:
+        port: 8042
+        delay: 3
+        timeout: 30
+
+    - name: Check NodeManager status
+      become_user: "{{ hadoop_user }}"
+      shell: "jps | grep NodeManager"
+      register: nm_status
+      ignore_errors: yes
+
+    - name: Display NodeManager status
+      debug:
+        msg: "{{ inventory_hostname }}: {{ nm_status.stdout }}"
+
+- name: Display cluster status
+  hosts: namenode1
+  become: yes
+  tasks:
+    - name: Check HDFS HA status
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn1
+        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn2
+      args:
+        executable: /bin/bash
+      register: ha_status
+      ignore_errors: yes
+
+    - name: Display HA status
+      debug:
+        msg: "{{ ha_status.stdout_lines }}"
+
+    - name: Show web UI URLs
+      debug:
+        msg:
+          - "===== Cluster Started Successfully ====="
+          - "Active NameNode UI: http://localhost:9870"
+          - "Standby NameNode UI: http://localhost:9871"
+          - "Active ResourceManager UI: http://localhost:8088"
+          - "Standby ResourceManager UI: http://localhost:8089"

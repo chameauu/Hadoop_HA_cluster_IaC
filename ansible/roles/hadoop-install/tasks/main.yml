@@ -1,0 +1,68 @@
+---
+# Hadoop installation tasks
+
+- name: Check if Hadoop is already downloaded in shared folder
+  stat:
+    path: "/vagrant/downloads/hadoop-{{ hadoop_version }}.tar.gz"
+  register: hadoop_archive
+
+- name: Download Hadoop to shared folder (only once for all VMs)
+  get_url:
+    url: "{{ hadoop_download_url }}"
+    dest: "/vagrant/downloads/hadoop-{{ hadoop_version }}.tar.gz"
+    mode: '0644'
+  when: not hadoop_archive.stat.exists
+  run_once: true
+
+- name: Check if Hadoop is already extracted
+  stat:
+    path: "/opt/hadoop-{{ hadoop_version }}"
+  register: hadoop_extracted
+
+- name: Extract Hadoop
+  unarchive:
+    src: "/vagrant/downloads/hadoop-{{ hadoop_version }}.tar.gz"
+    dest: /opt/
+    remote_src: yes
+  when: not hadoop_extracted.stat.exists
+
+- name: Create Hadoop symlink
+  file:
+    src: "/opt/hadoop-{{ hadoop_version }}"
+    dest: "{{ hadoop_install_dir }}"
+    state: link
+
+- name: Set JAVA_HOME in hadoop-env.sh
+  lineinfile:
+    path: "{{ hadoop_install_dir }}/etc/hadoop/hadoop-env.sh"
+    regexp: '^export JAVA_HOME='
+    line: "export JAVA_HOME={{ java_home }}"
+
+- name: Create Hadoop directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0755'
+  loop:
+    - "{{ hadoop_install_dir }}/tmp"
+    - "{{ hadoop_install_dir }}/hdfs"
+    - "{{ hadoop_install_dir }}/hdfs/namenode"
+    - "{{ hadoop_install_dir }}/hdfs/datanode"
+    - "{{ hadoop_install_dir }}/journal"
+
+- name: Set Hadoop directory ownership
+  file:
+    path: "/opt/hadoop-{{ hadoop_version }}"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    recurse: yes
+
+- name: Set Hadoop symlink ownership
+  file:
+    path: "{{ hadoop_install_dir }}"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    state: link
+    follow: no

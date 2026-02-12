@@ -1,0 +1,57 @@
+---
+# Common variables for all hosts
+
+# Java configuration
+java_home: /usr/lib/jvm/java-8-openjdk-amd64
+
+# Hadoop configuration
+hadoop_version: 3.3.6
+hadoop_download_url: "https://archive.apache.org/dist/hadoop/common/hadoop-{{ hadoop_version }}/hadoop-{{ hadoop_version }}.tar.gz"
+hadoop_install_dir: /opt/hadoop
+hadoop_user: hadoop
+hadoop_group: hadoop
+hadoop_user_password: hadoop
+
+# ZooKeeper configuration
+zookeeper_version: 3.8.3
+zookeeper_download_url: "https://archive.apache.org/dist/zookeeper/zookeeper-{{ zookeeper_version }}/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
+zookeeper_install_dir: /opt/zookeeper
+zookeeper_data_dir: /opt/zookeeper/data
+zookeeper_client_port: 2181
+
+# Cluster configuration
+cluster_name: hadoop-cluster
+nameservice_id: hadoop-cluster
+yarn_cluster_id: yarn-cluster
+
+# Network configuration
+namenode1_ip: 192.168.56.10
+namenode2_ip: 192.168.56.11
+datanode1_ip: 192.168.56.12
+datanode2_ip: 192.168.56.13
+
+# ZooKeeper quorum
+zookeeper_quorum: "{{ namenode1_ip }}:{{ zookeeper_client_port }},{{ namenode2_ip }}:{{ zookeeper_client_port }},{{ datanode1_ip }}:{{ zookeeper_client_port }}"
+
+# HDFS configuration
+dfs_replication: 2
+dfs_namenode_rpc_port: 9000
+dfs_namenode_http_port: 9870
+dfs_journalnode_rpc_port: 8485
+
+# YARN configuration
+yarn_resourcemanager_port: 8032
+yarn_resourcemanager_scheduler_port: 8030
+yarn_resourcemanager_tracker_port: 8031
+yarn_resourcemanager_webapp_port: 8088
+yarn_nodemanager_memory_mb: 1536
+yarn_scheduler_maximum_allocation_mb: 1536
+yarn_scheduler_minimum_allocation_mb: 128
+
+# MapReduce configuration
+mapreduce_am_memory_mb: 512
+mapreduce_am_java_opts: "-Xmx384m"
+mapreduce_map_memory_mb: 512
+mapreduce_reduce_memory_mb: 512
+mapreduce_map_java_opts: "-Xmx384m"
+mapreduce_reduce_java_opts: "-Xmx384m"

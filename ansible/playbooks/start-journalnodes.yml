@@ -1,0 +1,31 @@
+---
+# Start JournalNodes on all JournalNode hosts
+
+- name: Start JournalNodes
+  hosts: journalnodes
+  become: yes
+  tasks:
+    - name: Start JournalNode daemon
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon start journalnode
+      args:
+        executable: /bin/bash
+      register: jn_start
+      
+    - name: Wait for JournalNode to start
+      wait_for:
+        port: "{{ dfs_journalnode_rpc_port }}"
+        delay: 3
+        timeout: 30
+
+    - name: Check JournalNode process
+      shell: "jps | grep JournalNode"
+      become_user: "{{ hadoop_user }}"
+      register: jn_status
+      ignore_errors: yes
+      
+    - name: Display JournalNode status
+      debug:
+        msg: "JournalNode running on {{ inventory_hostname }}: {{ jn_status.stdout }}"

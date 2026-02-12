@@ -1,0 +1,44 @@
+---
+# NameNode configuration tasks
+
+- name: Deploy core-site.xml
+  template:
+    src: core-site.xml.j2
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/core-site.xml"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'
+
+- name: Deploy hdfs-site.xml for NameNode
+  template:
+    src: hdfs-site-namenode.xml.j2
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/hdfs-site.xml"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'
+
+- name: Deploy yarn-site.xml
+  template:
+    src: yarn-site.xml.j2
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/yarn-site.xml"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'
+
+- name: Deploy mapred-site.xml
+  template:
+    src: mapred-site.xml.j2
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/mapred-site.xml"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'
+
+- name: Configure workers file
+  copy:
+    content: |
+      datanode1
+      datanode2
+    dest: "{{ hadoop_install_dir }}/etc/hadoop/workers"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'

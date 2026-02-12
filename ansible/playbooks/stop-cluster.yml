@@ -1,0 +1,91 @@
+---
+# Stop Hadoop HA cluster services
+
+- name: Stop NodeManagers
+  hosts: nodemanagers
+  become: yes
+  tasks:
+    - name: Stop NodeManager
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/yarn --daemon stop nodemanager
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+- name: Stop ResourceManagers
+  hosts: resourcemanagers
+  become: yes
+  tasks:
+    - name: Stop ResourceManager
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/yarn --daemon stop resourcemanager
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+- name: Stop DataNodes
+  hosts: datanodes
+  become: yes
+  tasks:
+    - name: Stop DataNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon stop datanode
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+- name: Stop NameNodes and ZKFC
+  hosts: namenodes
+  become: yes
+  tasks:
+    - name: Stop ZKFC
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon stop zkfc
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Stop NameNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon stop namenode
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+- name: Stop JournalNodes
+  hosts: journalnodes
+  become: yes
+  tasks:
+    - name: Stop JournalNode
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs --daemon stop journalnode
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+- name: Stop ZooKeeper
+  hosts: zookeeper
+  become: yes
+  tasks:
+    - name: Stop ZooKeeper service
+      become_user: "{{ hadoop_user }}"
+      shell: "{{ zookeeper_install_dir }}/bin/zkServer.sh stop"
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Confirm cluster stopped
+      debug:
+        msg: "Hadoop HA cluster stopped successfully"

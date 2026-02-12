@@ -1,0 +1,110 @@
+---
+# Common setup tasks for all nodes
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install required packages
+  apt:
+    name:
+      - wget
+      - openjdk-8-jdk
+      - ssh
+      - pdsh
+      - net-tools
+      - rsync
+    state: present
+
+- name: Set JAVA_HOME in /etc/environment
+  lineinfile:
+    path: /etc/environment
+    line: 'JAVA_HOME={{ java_home }}'
+    create: yes
+
+- name: Create hadoop group
+  group:
+    name: "{{ hadoop_group }}"
+    state: present
+
+- name: Create hadoop user
+  user:
+    name: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    shell: /bin/bash
+    home: "/home/{{ hadoop_user }}"
+    create_home: yes
+    state: present
+
+- name: Set hadoop user password
+  shell: echo "{{ hadoop_user }}:{{ hadoop_user_password }}" | chpasswd
+  changed_when: false
+
+- name: Create .ssh directory for hadoop user
+  file:
+    path: "/home/{{ hadoop_user }}/.ssh"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0700'
+
+- name: Generate SSH key for hadoop user on namenode1
+  openssh_keypair:
+    path: "/home/{{ hadoop_user }}/.ssh/id_rsa"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0600'
+  when: inventory_hostname == 'namenode1'
+
+- name: Fetch public key from namenode1
+  fetch:
+    src: "/home/{{ hadoop_user }}/.ssh/id_rsa.pub"
+    dest: "/tmp/hadoop_key.pub"
+    flat: yes
+  when: inventory_hostname == 'namenode1'
+
+- name: Wait for SSH key to be fetched
+  wait_for:
+    path: "/tmp/hadoop_key.pub"
+  delegate_to: localhost
+  become: no
+
+- name: Distribute SSH public key to all nodes
+  authorized_key:
+    user: "{{ hadoop_user }}"
+    key: "{{ lookup('file', '/tmp/hadoop_key.pub') }}"
+    state: present
+
+- name: Configure SSH to skip host key checking
+  copy:
+    dest: "/home/{{ hadoop_user }}/.ssh/config"
+    content: |
+      Host *
+          StrictHostKeyChecking no
+          UserKnownHostsFile=/dev/null
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0600'
+
+- name: Configure hadoop user bashrc
+  blockinfile:
+    path: "/home/{{ hadoop_user }}/.bashrc"
+    block: |
+      # Hadoop Environment Variables
+      export JAVA_HOME={{ java_home }}
+      export HADOOP_HOME={{ hadoop_install_dir }}
+      export HADOOP_INSTALL=$HADOOP_HOME
+      export HADOOP_MAPRED_HOME=$HADOOP_HOME
+      export HADOOP_COMMON_HOME=$HADOOP_HOME
+      export HADOOP_HDFS_HOME=$HADOOP_HOME
+      export YARN_HOME=$HADOOP_HOME
+      export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+      export ZOOKEEPER_HOME={{ zookeeper_install_dir }}
+      export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin:$ZOOKEEPER_HOME/bin
+      export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
+      export PDSH_RCMD_TYPE=ssh
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - HADOOP ENV"
+    create: yes
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
