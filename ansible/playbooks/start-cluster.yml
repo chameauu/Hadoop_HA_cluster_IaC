@@ -106,64 +106,57 @@
       become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/yarn --daemon start resourcemanager 2>&1 | grep -v "Cannot set priority" || true
+        {{ hadoop_install_dir }}/bin/yarn --daemon start resourcemanager
       args:
         executable: /bin/bash
       when: rm_running.rc != 0
       register: rm_start
+      ignore_errors: yes
 
-    - name: Wait a moment for ResourceManager to initialize
+    - name: Wait for ResourceManager to initialize
       pause:
-        seconds: 3
+        seconds: 5
       when: rm_running.rc != 0
 
-    - name: Verify ResourceManager is actually running
+    - name: Verify ResourceManager process is running
       become_user: "{{ hadoop_user }}"
-      shell: jps | grep -q ResourceManager
+      shell: jps | grep ResourceManager
       register: rm_verify
       failed_when: false
       changed_when: false
-      when: rm_running.rc != 0
 
-    - name: Wait for ResourceManager port (only for active RM)
-      wait_for:
-        port: "{{ yarn_resourcemanager_port }}"
-        delay: 2
-        timeout: 30
-      when: rm_running.rc != 0 and rm_verify.rc == 0
-      ignore_errors: yes
+    - name: Display ResourceManager process status
+      debug:
+        msg: "{{ inventory_hostname }}: ResourceManager {{ 'is running' if rm_verify.rc == 0 else 'FAILED TO START' }}"
 
-    - name: Check ResourceManager logs if failed
+    - name: Check ResourceManager logs if not running
       become_user: "{{ hadoop_user }}"
       shell: |
-        echo "=== Checking for ResourceManager process ==="
-        ps aux | grep -i "[r]esourcemanager" || echo "No ResourceManager process found"
-        echo ""
-        echo "=== Checking log files ==="
-        ls -lh {{ hadoop_install_dir }}/logs/*resourcemanager* 2>/dev/null || echo "No ResourceManager log files"
-        echo ""
-        echo "=== Last 50 lines of latest ResourceManager log ==="
-        find {{ hadoop_install_dir }}/logs -name "*resourcemanager*.log" -type f -exec tail -50 {} \; 2>/dev/null || echo "No log content"
-        echo ""
-        echo "=== Checking yarn-site.xml ==="
-        grep -A2 "yarn.resourcemanager.hostname" {{ hadoop_install_dir }}/etc/hadoop/yarn-site.xml | head -20
+        echo "=== Last 100 lines of ResourceManager log ==="
+        tail -100 {{ hadoop_install_dir }}/logs/yarn-{{ hadoop_user }}-resourcemanager-*.log 2>/dev/null || echo "No log file found"
       register: rm_logs
-      when: rm_start is defined and (rm_start.rc != 0 or rm_start.stderr != '')
+      when: rm_verify.rc != 0
 
-    - name: Display ResourceManager logs
+    - name: Display ResourceManager error logs
       debug:
         var: rm_logs.stdout_lines
-      when: rm_logs is defined and rm_logs.stdout_lines is defined
+      when: rm_verify.rc != 0 and rm_logs is defined
 
-    - name: Check ResourceManager status
+    - name: Check YARN HA status
       become_user: "{{ hadoop_user }}"
-      shell: "jps | grep ResourceManager"
-      register: rm_status
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState {{ 'rm1' if inventory_hostname == 'namenode1' else 'rm2' }}
+      args:
+        executable: /bin/bash
+      register: rm_ha_status
       ignore_errors: yes
+      when: rm_verify.rc == 0
 
-    - name: Display ResourceManager status
+    - name: Display ResourceManager HA status
       debug:
-        msg: "{{ inventory_hostname }}: {{ rm_status.stdout }}"
+        msg: "{{ inventory_hostname }}: {{ rm_ha_status.stdout if rm_ha_status.rc == 0 else 'Unable to determine HA status' }}"
+      when: rm_verify.rc == 0
 
 - name: Start NodeManagers
   hosts: nodemanagers
@@ -211,22 +204,45 @@
       become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn1
-        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn2
+        echo "HDFS NameNode Status:"
+        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn1 2>/dev/null || echo "nn1: unavailable"
+        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn2 2>/dev/null || echo "nn2: unavailable"
       args:
         executable: /bin/bash
-      register: ha_status
+      register: hdfs_status
       ignore_errors: yes
 
-    - name: Display HA status
+    - name: Check YARN HA status
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        echo "YARN ResourceManager Status:"
+        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState rm1 2>/dev/null || echo "rm1: unavailable"
+        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState rm2 2>/dev/null || echo "rm2: unavailable"
+      args:
+        executable: /bin/bash
+      register: yarn_status
+      ignore_errors: yes
+
+    - name: Display cluster status
       debug:
-        msg: "{{ ha_status.stdout_lines }}"
+        msg: "{{ (hdfs_status.stdout_lines + yarn_status.stdout_lines) | list }}"
 
     - name: Show web UI URLs
       debug:
         msg:
           - "===== Cluster Started Successfully ====="
-          - "Active NameNode UI: http://localhost:9870"
-          - "Standby NameNode UI: http://localhost:9871"
-          - "Active ResourceManager UI: http://localhost:8088"
-          - "Standby ResourceManager UI: http://localhost:8089"
+          - ""
+          - "HDFS Web UIs:"
+          - "  Active NameNode:  http://localhost:9870"
+          - "  Standby NameNode: http://localhost:9871"
+          - ""
+          - "YARN Web UIs:"
+          - "  Active ResourceManager:  http://localhost:8088"
+          - "  Standby ResourceManager: http://localhost:8089"
+          - ""
+          - "Check cluster health:"
+          - "  vagrant ssh namenode1"
+          - "  sudo su - hadoop"
+          - "  hdfs dfsadmin -report"
+          - "  yarn node -list"
