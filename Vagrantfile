@@ -13,16 +13,16 @@ Vagrant.configure("2") do |config|
     
     # Configure hosts file for all nodes
     cat >> /etc/hosts << 'EOF'
-192.168.56.10 namenode1
-192.168.56.11 namenode2
+192.168.56.10 master1
+192.168.56.11 master2
 192.168.56.12 datanode1
 192.168.56.13 datanode2
 EOF
   SCRIPT
   
-  # NameNode 1 (Active NameNode + ZooKeeper + JournalNode)
-  config.vm.define "namenode1" do |nn1|
-    nn1.vm.hostname = "namenode1"
+  # Master 1 (Active NameNode + ZooKeeper + JournalNode)
+  config.vm.define "master1" do |nn1|
+    nn1.vm.hostname = "master1"
     nn1.vm.network "private_network", ip: "192.168.56.10"
     
     # Port forwarding for Hadoop web UIs
@@ -32,7 +32,7 @@ EOF
     nn1.vm.network "forwarded_port", guest: 2181, host: 2181   # ZooKeeper
     
     nn1.vm.provider "virtualbox" do |vb|
-      vb.name = "namenode1"
+      vb.name = "master1"
       vb.memory = "2048"
       vb.cpus = 2
     end
@@ -40,9 +40,9 @@ EOF
     nn1.vm.provision "shell", inline: $common_script
   end
   
-  # NameNode 2 (Standby NameNode + ZooKeeper + JournalNode)
-  config.vm.define "namenode2" do |nn2|
-    nn2.vm.hostname = "namenode2"
+  # Master 2 (Standby NameNode + ZooKeeper + JournalNode)
+  config.vm.define "master2" do |nn2|
+    nn2.vm.hostname = "master2"
     nn2.vm.network "private_network", ip: "192.168.56.11"
     
     # Port forwarding for standby NameNode UI
@@ -50,7 +50,7 @@ EOF
     nn2.vm.network "forwarded_port", guest: 8088, host: 8089   # Standby ResourceManager UI
     
     nn2.vm.provider "virtualbox" do |vb|
-      vb.name = "namenode2"
+      vb.name = "master2"
       vb.memory = "2048"
       vb.cpus = 2
     end
