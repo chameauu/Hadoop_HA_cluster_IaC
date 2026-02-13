@@ -146,7 +146,7 @@
       become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState {{ 'rm1' if inventory_hostname == 'namenode1' else 'rm2' }}
+        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState {{ 'rm1' if inventory_hostname == 'master1' else 'rm2' }}
       args:
         executable: /bin/bash
       register: rm_ha_status
@@ -196,8 +196,56 @@
       debug:
         msg: "{{ inventory_hostname }}: {{ nm_status.stdout }}"
 
+- name: Start MapReduce Job History Server
+  hosts: master1
+  become: yes
+  tasks:
+    - name: Create HDFS directories for Job History Server
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ mapreduce_jobhistory_intermediate_done_dir }}
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ mapreduce_jobhistory_done_dir }}
+        {{ hadoop_install_dir }}/bin/hdfs dfs -chmod -R 1777 /tmp
+        {{ hadoop_install_dir }}/bin/hdfs dfs -chown -R {{ hadoop_user }}:{{ hadoop_group }} /tmp/mr-history
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Check if Job History Server is running
+      become_user: "{{ hadoop_user }}"
+      shell: jps | grep -q JobHistoryServer
+      register: jhs_running
+      failed_when: false
+      changed_when: false
+
+    - name: Start Job History Server
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/mapred --daemon start historyserver
+      args:
+        executable: /bin/bash
+      when: jhs_running.rc != 0
+
+    - name: Wait for Job History Server to start
+      wait_for:
+        port: "{{ mapreduce_jobhistory_webapp_port }}"
+        delay: 3
+        timeout: 30
+
+    - name: Check Job History Server status
+      become_user: "{{ hadoop_user }}"
+      shell: "jps | grep JobHistoryServer"
+      register: jhs_status
+      ignore_errors: yes
+
+    - name: Display Job History Server status
+      debug:
+        msg: "Job History Server: {{ jhs_status.stdout }}"
+
 - name: Display cluster status
-  hosts: namenode1
+  hosts: master1
   become: yes
   tasks:
     - name: Check HDFS HA status
@@ -241,8 +289,11 @@
           - "  Active ResourceManager:  http://localhost:8088"
           - "  Standby ResourceManager: http://localhost:8089"
           - ""
+          - "MapReduce Job History Server:"
+          - "  Job History: http://localhost:19888"
+          - ""
           - "Check cluster health:"
-          - "  vagrant ssh namenode1"
+          - "  vagrant ssh master1"
           - "  sudo su - hadoop"
           - "  hdfs dfsadmin -report"
           - "  yarn node -list"

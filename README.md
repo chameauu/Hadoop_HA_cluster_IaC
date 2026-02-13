@@ -27,7 +27,7 @@ make start
 ### Technology Stack
 - **Hadoop**: 3.3.6
 - **ZooKeeper**: 3.8.3
-- **OS**: Ubuntu 20.04
+- **OS**: Ubuntu 22.04
 - **Java**: OpenJDK 8
 - **Provisioning**: Ansible 2.9+
 - **VMs**: Vagrant + VirtualBox

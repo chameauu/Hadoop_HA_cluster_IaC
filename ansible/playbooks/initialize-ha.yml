@@ -1,8 +1,8 @@
 ---
 # Initialize Hadoop HA cluster
 
-- name: Format NameNode on namenode1
-  hosts: namenode1
+- name: Format NameNode on master1
+  hosts: master1
   become: yes
   tasks:
     - name: Check if NameNode is already formatted
@@ -25,7 +25,7 @@
         var: format_result.stdout_lines
       when: format_result is defined
 
-    - name: Start NameNode on namenode1
+    - name: Start NameNode on master1
       become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
@@ -39,8 +39,8 @@
         delay: 5
         timeout: 60
 
-- name: Bootstrap standby NameNode on namenode2
-  hosts: namenode2
+- name: Bootstrap standby NameNode on master2
+  hosts: master2
   become: yes
   tasks:
     - name: Check if standby NameNode is already bootstrapped
@@ -64,7 +64,7 @@
       when: bootstrap_result is defined
 
 - name: Format ZooKeeper for automatic failover
-  hosts: namenode1
+  hosts: master1
   become: yes
   tasks:
     - name: Format ZKFC

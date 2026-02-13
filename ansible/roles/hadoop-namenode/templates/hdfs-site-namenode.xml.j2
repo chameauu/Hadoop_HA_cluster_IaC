@@ -11,23 +11,23 @@
     </property>
     <property>
         <name>dfs.namenode.rpc-address.{{ nameservice_id }}.nn1</name>
-        <value>{{ namenode1_ip }}:{{ dfs_namenode_rpc_port }}</value>
+        <value>{{ master1_ip }}:{{ dfs_namenode_rpc_port }}</value>
     </property>
     <property>
         <name>dfs.namenode.rpc-address.{{ nameservice_id }}.nn2</name>
-        <value>{{ namenode2_ip }}:{{ dfs_namenode_rpc_port }}</value>
+        <value>{{ master2_ip }}:{{ dfs_namenode_rpc_port }}</value>
     </property>
     <property>
         <name>dfs.namenode.http-address.{{ nameservice_id }}.nn1</name>
-        <value>{{ namenode1_ip }}:{{ dfs_namenode_http_port }}</value>
+        <value>{{ master1_ip }}:{{ dfs_namenode_http_port }}</value>
     </property>
     <property>
         <name>dfs.namenode.http-address.{{ nameservice_id }}.nn2</name>
-        <value>{{ namenode2_ip }}:{{ dfs_namenode_http_port }}</value>
+        <value>{{ master2_ip }}:{{ dfs_namenode_http_port }}</value>
     </property>
     <property>
         <name>dfs.namenode.shared.edits.dir</name>
-        <value>qjournal://{{ namenode1_ip }}:{{ dfs_journalnode_rpc_port }};{{ namenode2_ip }}:{{ dfs_journalnode_rpc_port }};{{ datanode1_ip }}:{{ dfs_journalnode_rpc_port }}/{{ nameservice_id }}</value>
+        <value>qjournal://{{ master1_ip }}:{{ dfs_journalnode_rpc_port }};{{ master2_ip }}:{{ dfs_journalnode_rpc_port }};{{ datanode1_ip }}:{{ dfs_journalnode_rpc_port }}/{{ nameservice_id }}</value>
     </property>
     <property>
         <name>dfs.client.failover.proxy.provider.{{ nameservice_id }}</name>

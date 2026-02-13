@@ -49,20 +49,20 @@
     group: "{{ hadoop_group }}"
     mode: '0700'
 
-- name: Generate SSH key for hadoop user on namenode1
+- name: Generate SSH key for hadoop user on master1
   openssh_keypair:
     path: "/home/{{ hadoop_user }}/.ssh/id_rsa"
     owner: "{{ hadoop_user }}"
     group: "{{ hadoop_group }}"
     mode: '0600'
-  when: inventory_hostname == 'namenode1'
+  when: inventory_hostname == 'master1'
 
-- name: Fetch public key from namenode1
+- name: Fetch public key from master1
   fetch:
     src: "/home/{{ hadoop_user }}/.ssh/id_rsa.pub"
     dest: "/tmp/hadoop_key.pub"
     flat: yes
-  when: inventory_hostname == 'namenode1'
+  when: inventory_hostname == 'master1'
 
 - name: Wait for SSH key to be fetched
   wait_for:

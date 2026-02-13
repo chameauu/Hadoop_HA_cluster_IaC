@@ -2,8 +2,8 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  # Use Ubuntu Server 20.04
-  config.vm.box = "ubuntu/focal64"
+  # Use Ubuntu Server 22.04
+  config.vm.box = "ubuntu/jammy64"
   
   # Common provisioning - minimal setup for Ansible
   $common_script = <<-SCRIPT

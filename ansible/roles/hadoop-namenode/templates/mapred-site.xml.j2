@@ -45,4 +45,21 @@
         <name>mapreduce.reduce.java.opts</name>
         <value>{{ mapreduce_reduce_java_opts }}</value>
     </property>
+    <!-- Job History Server -->
+    <property>
+        <name>mapreduce.jobhistory.address</name>
+        <value>{{ master1_ip }}:{{ mapreduce_jobhistory_address_port }}</value>
+    </property>
+    <property>
+        <name>mapreduce.jobhistory.webapp.address</name>
+        <value>{{ master1_ip }}:{{ mapreduce_jobhistory_webapp_port }}</value>
+    </property>
+    <property>
+        <name>mapreduce.jobhistory.intermediate-done-dir</name>
+        <value>{{ mapreduce_jobhistory_intermediate_done_dir }}</value>
+    </property>
+    <property>
+        <name>mapreduce.jobhistory.done-dir</name>
+        <value>{{ mapreduce_jobhistory_done_dir }}</value>
+    </property>
 </configuration>

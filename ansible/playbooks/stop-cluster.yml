@@ -14,6 +14,19 @@
         executable: /bin/bash
       ignore_errors: yes
 
+- name: Stop MapReduce Job History Server
+  hosts: master1
+  become: yes
+  tasks:
+    - name: Stop Job History Server
+      become_user: "{{ hadoop_user }}"
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/mapred --daemon stop historyserver
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
 - name: Stop ResourceManagers
   hosts: resourcemanagers
   become: yes

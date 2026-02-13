@@ -61,15 +61,15 @@ restart: stop
 
 status:
 	@echo "Checking cluster status..."
-	@vagrant ssh namenode1 -c 'sudo su - hadoop -c "hdfs haadmin -getServiceState nn1"'
-	@vagrant ssh namenode1 -c 'sudo su - hadoop -c "hdfs haadmin -getServiceState nn2"'
-	@vagrant ssh namenode1 -c 'sudo su - hadoop -c "hdfs dfsadmin -report"'
+	@vagrant ssh master1 -c 'sudo su - hadoop -c "hdfs haadmin -getServiceState nn1"'
+	@vagrant ssh master1 -c 'sudo su - hadoop -c "hdfs haadmin -getServiceState nn2"'
+	@vagrant ssh master1 -c 'sudo su - hadoop -c "hdfs dfsadmin -report"'
 
 clean:
 	@make stop
 	@echo "Cleaning data directories..."
-	@vagrant ssh namenode1 -c 'sudo rm -rf /opt/hadoop/hdfs/* /opt/hadoop/journal/* /opt/hadoop/tmp/*'
-	@vagrant ssh namenode2 -c 'sudo rm -rf /opt/hadoop/hdfs/* /opt/hadoop/journal/* /opt/hadoop/tmp/*'
+	@vagrant ssh master1 -c 'sudo rm -rf /opt/hadoop/hdfs/* /opt/hadoop/journal/* /opt/hadoop/tmp/*'
+	@vagrant ssh master2 -c 'sudo rm -rf /opt/hadoop/hdfs/* /opt/hadoop/journal/* /opt/hadoop/tmp/*'
 	@vagrant ssh datanode1 -c 'sudo rm -rf /opt/hadoop/hdfs/* /opt/hadoop/journal/* /opt/hadoop/tmp/*'
 	@vagrant ssh datanode2 -c 'sudo rm -rf /opt/hadoop/hdfs/* /opt/hadoop/tmp/*'
 
@@ -80,4 +80,4 @@ destroy:
 # Quick test
 test:
 	@echo "Running MapReduce Pi test..."
-	@vagrant ssh namenode1 -c 'sudo su - hadoop -c "hadoop jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar pi 2 100"'
+	@vagrant ssh master1 -c 'sudo su - hadoop -c "hadoop jar /opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar pi 2 100"'
