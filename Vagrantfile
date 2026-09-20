@@ -65,7 +65,7 @@ EOF
     
     dn1.vm.provider "virtualbox" do |vb|
       vb.name = "datanode1"
-      vb.memory = "2048"
+      vb.memory = "1048"
       vb.cpus = 1
     end
     
@@ -79,7 +79,7 @@ EOF
     
     dn2.vm.provider "virtualbox" do |vb|
       vb.name = "datanode2"
-      vb.memory = "2048"
+      vb.memory = "1048"
       vb.cpus = 1
     end
     
