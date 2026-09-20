@@ -1,9 +1,28 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# This project runs on the libvirt (KVM/QEMU) provider by default.
+# Override for a single command, e.g.: VAGRANT_DEFAULT_PROVIDER=virtualbox vagrant up
+ENV['VAGRANT_DEFAULT_PROVIDER'] ||= 'libvirt'
+
 Vagrant.configure("2") do |config|
-  # Use Ubuntu Server 22.04
-  config.vm.box = "ubuntu/jammy64"
+  # Ubuntu Server 22.04 - note: "ubuntu/jammy64" is VirtualBox-only, this box also
+  # ships a libvirt/KVM variant
+  config.vm.box = "generic/ubuntu2204"
+
+  # /vagrant must be writable from inside the guests: the Ansible roles download the
+  # Hadoop/ZooKeeper tarballs into /vagrant/downloads (shared with the host ./downloads).
+  # NFS requires nfs-kernel-server on the host - see README prerequisites.
+  config.vm.synced_folder ".", "/vagrant", type: "nfs", nfs_udp: false
+  # Fallback if you do not want to run an NFS server: comment the line above and use
+  # config.vm.synced_folder ".", "/vagrant", type: "9p", accessmode: "mapped"
+
+  # Shared libvirt settings for all machines
+  config.vm.provider :libvirt do |lv|
+    lv.driver = "kvm"
+    lv.default_prefix = "hadoop"
+    lv.machine_virtual_size = 20
+  end
   
   # Common provisioning - minimal setup for Ansible
   $common_script = <<-SCRIPT
@@ -31,10 +50,9 @@ EOF
     nn1.vm.network "forwarded_port", guest: 19888, host: 19888 # JobHistory UI
     nn1.vm.network "forwarded_port", guest: 2181, host: 2181   # ZooKeeper
     
-    nn1.vm.provider "virtualbox" do |vb|
-      vb.name = "master1"
-      vb.memory = "2048"
-      vb.cpus = 2
+    nn1.vm.provider :libvirt do |lv|
+      lv.memory = 2048
+      lv.cpus = 2
     end
     
     nn1.vm.provision "shell", inline: $common_script
@@ -49,10 +67,9 @@ EOF
     nn2.vm.network "forwarded_port", guest: 9870, host: 9871   # Standby NameNode UI
     nn2.vm.network "forwarded_port", guest: 8088, host: 8089   # Standby ResourceManager UI
     
-    nn2.vm.provider "virtualbox" do |vb|
-      vb.name = "master2"
-      vb.memory = "2048"
-      vb.cpus = 2
+    nn2.vm.provider :libvirt do |lv|
+      lv.memory = 2048
+      lv.cpus = 2
     end
     
     nn2.vm.provision "shell", inline: $common_script
@@ -63,10 +80,9 @@ EOF
     dn1.vm.hostname = "datanode1"
     dn1.vm.network "private_network", ip: "192.168.56.12"
     
-    dn1.vm.provider "virtualbox" do |vb|
-      vb.name = "datanode1"
-      vb.memory = "2048"
-      vb.cpus = 1
+    dn1.vm.provider :libvirt do |lv|
+      lv.memory = 2048
+      lv.cpus = 1
     end
     
     dn1.vm.provision "shell", inline: $common_script
@@ -77,10 +93,9 @@ EOF
     dn2.vm.hostname = "datanode2"
     dn2.vm.network "private_network", ip: "192.168.56.13"
     
-    dn2.vm.provider "virtualbox" do |vb|
-      vb.name = "datanode2"
-      vb.memory = "2048"
-      vb.cpus = 1
+    dn2.vm.provider :libvirt do |lv|
+      lv.memory = 2048
+      lv.cpus = 1
     end
     
     dn2.vm.provision "shell", inline: $common_script

@@ -6,7 +6,7 @@ A production-ready Hadoop 3.3.6 High Availability cluster managed with Ansible a
 
 ```bash
 # 1. Create VMs and provision (15-20 min first time)
-vagrant up
+vagrant up --provider=libvirt
 
 # 2. Start services (2-3 min)
 make start
@@ -30,37 +30,54 @@ make start
 - **OS**: Ubuntu 22.04
 - **Java**: OpenJDK 8
 - **Provisioning**: Ansible 2.9+
-- **VMs**: Vagrant + VirtualBox
+- **VMs**: Vagrant + libvirt/KVM (QEMU)
 
 ## 📖 Prerequisites
 
 Before starting, ensure you have:
 
-- **VirtualBox**: 6.0 or later
+- **KVM / libvirt**: Linux host with hardware virtualization available (`/dev/kvm`)
 - **Vagrant**: 2.2 or later
+- **vagrant-libvirt plugin**: `vagrant plugin install vagrant-libvirt`
 - **Ansible**: 2.9 or later (on host machine)
 - **System Resources**:
   - 8GB RAM minimum (10GB recommended)
   - 6 CPU cores
   - 40GB free disk space
 
-### Installation
+### Installation (Debian/Ubuntu host)
 
-**macOS:**
 ```bash
-brew install virtualbox vagrant ansible
-```
-
-**Ubuntu/Debian:**
-```bash
+# 1. KVM + libvirt + NFS (used for the /vagrant synced folder) and the
+#    build dependencies needed to compile the native parts of the plugin
 sudo apt-get update
-sudo apt-get install virtualbox vagrant ansible
+sudo apt-get install -y qemu-system-x86 qemu-utils libvirt-daemon-system \
+  libvirt-clients nfs-kernel-server libvirt-dev
+
+# 2. Allow your user to talk to libvirtd (log out/in or `newgrp libvirt` afterwards)
+sudo usermod -aG libvirt,kvm "$USER"
+sudo systemctl enable --now libvirtd
+
+# 3. libvirt needs a storage pool for the VM disks (Debian does not create one)
+sudo virsh pool-define-as default dir --target /var/lib/libvirt/images
+sudo virsh pool-build default && sudo virsh pool-start default
+sudo virsh pool-autostart default
+
+# 4. The libvirt provider itself. Vagrant ships its own embedded Ruby, so the
+#    distribution `vagrant-libvirt` package is NOT used - install it as a plugin.
+vagrant plugin install vagrant-libvirt
+
+# 5. Ansible plus the collections the roles rely on
+sudo apt-get install -y ansible
+ansible-galaxy collection install ansible.posix community.crypto
 ```
 
-**Windows:**
-- Install VirtualBox from https://www.virtualbox.org/
-- Install Vagrant from https://www.vagrantup.com/
-- Install Ansible via WSL2 or use Windows Subsystem for Linux
+**Prefer VirtualBox?** The Vagrantfile uses libvirt by default. Install VirtualBox, then
+run `vagrant up --provider=virtualbox` and set a box that has a VirtualBox variant
+(for example `ubuntu/jammy64`) in the `Vagrantfile`.
+
+**macOS / Windows:** libvirt is a Linux technology - use VirtualBox there with the
+provider override shown above.
 
 ## 🎯 Common Commands
 
@@ -77,12 +94,12 @@ make start-zk       # Start ZooKeeper only
 make start-jn       # Start JournalNodes only
 make init-ha        # Initialize HA (first time only)
 
-# VM Management
-vagrant up          # Create and start all VMs
+# VM Management (libvirt is the default provider, see Vagrantfile)
+vagrant up --provider=libvirt   # Create and start all VMs
 vagrant halt        # Stop all VMs
 vagrant destroy -f  # Destroy all VMs
 vagrant status      # Check VM status
-vagrant ssh namenode1  # SSH into namenode1
+vagrant ssh master1 # SSH into master1 (also: master2, datanode1, datanode2)
 
 # Ansible Operations
 make provision      # Run Ansible provisioning
@@ -102,13 +119,15 @@ cd hadoop-cluster
 
 ```bash
 # Start all VMs (takes 15-20 minutes first time)
-vagrant up
+vagrant up --provider=libvirt
 
 # Or start one at a time if you have limited resources
-vagrant up namenode1
-vagrant up namenode2
-vagrant up datanode1
-vagrant up datanode2
+vagrant up --provider=libvirt master1
+vagrant up --provider=libvirt master2
+vagrant up --provider=libvirt datanode1
+vagrant up --provider=libvirt datanode2
+# Ansible provisioning runs when datanode2 comes up; to re-run it manually:
+make provision
 ```
 
 This will:
@@ -127,7 +146,7 @@ make start
 This runs:
 1. Start ZooKeeper cluster (3 nodes)
 2. Start JournalNodes (3 nodes)
-3. Initialize HA (format namenode1, bootstrap namenode2, format ZKFC)
+3. Initialize HA (format master1's NameNode, bootstrap master2, format ZKFC)
 4. Start all Hadoop services (NameNodes, DataNodes, ResourceManagers, NodeManagers)
 
 ### 4. Verify Cluster
@@ -137,7 +156,7 @@ This runs:
 make status
 
 # Or manually check
-vagrant ssh namenode1
+vagrant ssh master1
 sudo su - hadoop
 hdfs haadmin -getServiceState nn1  # Should show "active"
 hdfs haadmin -getServiceState nn2  # Should show "standby"
@@ -151,7 +170,7 @@ hdfs dfsadmin -report              # Should show 2 datanodes
 make test
 
 # Or manually
-vagrant ssh namenode1
+vagrant ssh master1
 sudo su - hadoop
 hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar pi 2 100
 ```
@@ -265,11 +284,19 @@ vagrant provision
 | Standby ResourceManager | http://localhost:8089 | Standby RM |
 | JobHistory Server | http://localhost:19888 | Job history |
 
+With the libvirt provider the guests are reachable on their private IPs as well, which is
+handy when the active/standby roles swap after a failover:
+
+| Node | Address |
+|------|---------|
+| master1 | http://192.168.56.10:9870 (NameNode), http://192.168.56.10:8088 (ResourceManager) |
+| master2 | http://192.168.56.11:9870 (NameNode), http://192.168.56.11:8088 (ResourceManager) |
+
 ## 🔍 Cluster Status
 
 ```bash
 # Check HA status
-vagrant ssh namenode1
+vagrant ssh master1
 sudo su - hadoop
 hdfs haadmin -getServiceState nn1  # Should be "active"
 hdfs haadmin -getServiceState nn2  # Should be "standby"
@@ -289,7 +316,7 @@ yarn rmadmin -getServiceState rm1
 make test
 
 # Or manually
-vagrant ssh namenode1
+vagrant ssh master1
 sudo su - hadoop
 hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar pi 2 100
 ```
@@ -298,18 +325,27 @@ hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar p
 
 ### VMs won't start
 ```bash
-# Check VirtualBox
-vboxmanage list vms
+# Check the libvirt stack
+systemctl status libvirtd
+virsh list --all        # domains are prefixed, e.g. hadoop_master1
+virsh pool-list --all   # the "default" storage pool must be active
 
-# Check resources (need ~8GB RAM, 6 CPUs)
-# Start one at a time
-vagrant up namenode1
+# Your user must be in the libvirt and kvm groups
+id -nG | tr ' ' '\n' | grep -E '^(libvirt|kvm)$'
+
+# Check resources (need ~8GB RAM, 6 CPUs) and start one at a time
+vagrant up --provider=libvirt master1
 ```
+
+Common errors:
+- `The provider 'libvirt' could not be found` → `vagrant plugin install vagrant-libvirt`
+- `Could not open a connection to libvirt` / permission denied → group change not active yet (`newgrp libvirt`) or `libvirtd` not started
+- `/vagrant` does not mount → NFS server missing: `sudo apt-get install nfs-kernel-server`
 
 ### Services won't start
 ```bash
 # Check logs
-vagrant ssh namenode1
+vagrant ssh master1
 tail -f /opt/hadoop/logs/*.log
 
 # Restart services

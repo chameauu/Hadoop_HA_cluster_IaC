@@ -1,7 +1,8 @@
-.PHONY: help setup start stop restart status clean destroy provision
+.PHONY: help setup start stop restart status clean destroy provision test start-zk start-jn init-ha
 
 INVENTORY := ansible/inventory/hosts.ini
 PLAYBOOK_DIR := ansible/playbooks
+PROVIDER := libvirt
 
 help:
 	@echo "Hadoop HA Cluster - Ansible Management"
@@ -22,8 +23,8 @@ help:
 	@echo "  make init-ha     - Initialize HA (first time only)"
 
 setup:
-	@echo "Creating VMs and provisioning with Ansible..."
-	vagrant up
+	@echo "Creating VMs on $(PROVIDER) and provisioning with Ansible..."
+	vagrant up --provider=$(PROVIDER)
 
 provision:
 	@echo "Running Ansible provisioning..."

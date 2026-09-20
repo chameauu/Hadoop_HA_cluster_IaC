@@ -1,6 +1,13 @@
 ---
 # Common setup tasks for all nodes
 
+- name: Ensure the shared downloads directory exists (maps to ./downloads on the host)
+  file:
+    path: /vagrant/downloads
+    state: directory
+    mode: '0777'
+  run_once: true
+
 - name: Update apt cache
   apt:
     update_cache: yes
