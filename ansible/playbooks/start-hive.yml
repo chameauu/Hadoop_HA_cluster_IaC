@@ -4,13 +4,13 @@
   become: yes
   become_user: "{{ hive_user }}"
   tasks:
-    - name: Check if Metastore is running
-      shell: "pgrep -f 'org.apache.hadoop.hive.metastore.HiveMetaStore'"
-      register: metastore_running
+    - name: Stop any existing Hive Metastore
+      shell: "pkill -f 'org.apache.hadoop.hive.metastore.HiveMetaStore'"
       ignore_errors: yes
-
+      
     - name: Start Hive Metastore
       shell: |
+        cd /home/{{ hive_user }}
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
         export HADOOP_HOME=/opt/hadoop
         export HIVE_HOME={{ hive_install_dir }}
@@ -20,14 +20,14 @@
         nohup $HIVE_HOME/bin/hive --service metastore > {{ hive_install_dir }}/logs/metastore.log 2>&1 &
       args:
         executable: /bin/bash
-      when: metastore_running.rc != 0
 
     - name: Wait for Metastore to start
       wait_for:
-        host: "{{ master1_ip }}"
+        host: localhost
         port: "{{ hive_metastore_port }}"
-        delay: 5
-        timeout: 60
+        delay: 10
+        timeout: 120
+        state: started
 
     - name: Check Metastore process
       shell: "jps | grep -i metastore || echo 'Not running yet'"
@@ -42,13 +42,13 @@
   become: yes
   become_user: "{{ hive_user }}"
   tasks:
-    - name: Check if HiveServer2 is running
-      shell: "pgrep -f 'org.apache.hive.service.server.HiveServer2'"
-      register: hiveserver2_running
+    - name: Stop any existing HiveServer2
+      shell: "pkill -f 'org.apache.hive.service.server.HiveServer2'"
       ignore_errors: yes
-
+      
     - name: Start HiveServer2
       shell: |
+        cd /home/{{ hive_user }}
         export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
         export HADOOP_HOME=/opt/hadoop
         export HIVE_HOME={{ hive_install_dir }}
@@ -58,14 +58,14 @@
         nohup $HIVE_HOME/bin/hive --service hiveserver2 > {{ hive_install_dir }}/logs/hiveserver2.log 2>&1 &
       args:
         executable: /bin/bash
-      when: hiveserver2_running.rc != 0
 
     - name: Wait for HiveServer2 to start
       wait_for:
-        host: "{{ master1_ip }}"
+        host: localhost
         port: "{{ hive_server2_port }}"
-        delay: 10
-        timeout: 120
+        delay: 15
+        timeout: 180
+        state: started
 
     - name: Check HiveServer2 process
       shell: "jps"
