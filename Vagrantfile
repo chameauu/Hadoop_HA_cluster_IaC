@@ -14,51 +14,36 @@ Vagrant.configure("2") do |config|
     # Configure hosts file for all nodes
     cat >> /etc/hosts << 'EOF'
 192.168.56.10 master1
-192.168.56.11 master2
 192.168.56.12 datanode1
 192.168.56.13 datanode2
 EOF
   SCRIPT
   
-  # Master 1 (Active NameNode + ZooKeeper + JournalNode)
-  config.vm.define "master1" do |nn1|
-    nn1.vm.hostname = "master1"
-    nn1.vm.network "private_network", ip: "192.168.56.10"
+  # Master 1 (Single NameNode + ResourceManager)
+  config.vm.define "master1" do |master|
+    master.vm.hostname = "master1"
+    master.vm.network "private_network", ip: "192.168.56.10"
     
     # Port forwarding for Hadoop web UIs
-    nn1.vm.network "forwarded_port", guest: 9870, host: 9870   # NameNode UI
-    nn1.vm.network "forwarded_port", guest: 8088, host: 8088   # ResourceManager UI
-    nn1.vm.network "forwarded_port", guest: 19888, host: 19888 # JobHistory UI
-    nn1.vm.network "forwarded_port", guest: 2181, host: 2181   # ZooKeeper
+    master.vm.network "forwarded_port", guest: 9870, host: 9870   # NameNode UI
+    master.vm.network "forwarded_port", guest: 8088, host: 8088   # ResourceManager UI
+    master.vm.network "forwarded_port", guest: 19888, host: 19888 # JobHistory UI
     
-    nn1.vm.provider "virtualbox" do |vb|
+    # Port forwarding for Hive services
+    master.vm.network "forwarded_port", guest: 9083, host: 9083   # Hive Metastore
+    master.vm.network "forwarded_port", guest: 10000, host: 10000 # HiveServer2
+    master.vm.network "forwarded_port", guest: 10002, host: 10002 # HiveServer2 Web UI
+    
+    master.vm.provider "virtualbox" do |vb|
       vb.name = "master1"
-      vb.memory = "2048"
+      vb.memory = "2072"
       vb.cpus = 2
     end
     
-    nn1.vm.provision "shell", inline: $common_script
+    master.vm.provision "shell", inline: $common_script
   end
   
-  # Master 2 (Standby NameNode + ZooKeeper + JournalNode)
-  config.vm.define "master2" do |nn2|
-    nn2.vm.hostname = "master2"
-    nn2.vm.network "private_network", ip: "192.168.56.11"
-    
-    # Port forwarding for standby NameNode UI
-    nn2.vm.network "forwarded_port", guest: 9870, host: 9871   # Standby NameNode UI
-    nn2.vm.network "forwarded_port", guest: 8088, host: 8089   # Standby ResourceManager UI
-    
-    nn2.vm.provider "virtualbox" do |vb|
-      vb.name = "master2"
-      vb.memory = "2048"
-      vb.cpus = 2
-    end
-    
-    nn2.vm.provision "shell", inline: $common_script
-  end
-  
-  # DataNode 1 (DataNode + ZooKeeper + JournalNode)
+  # DataNode 1 (DataNode + NodeManager)
   config.vm.define "datanode1" do |dn1|
     dn1.vm.hostname = "datanode1"
     dn1.vm.network "private_network", ip: "192.168.56.12"
@@ -72,7 +57,7 @@ EOF
     dn1.vm.provision "shell", inline: $common_script
   end
   
-  # DataNode 2 (DataNode only)
+  # DataNode 2 (DataNode + NodeManager)
   config.vm.define "datanode2" do |dn2|
     dn2.vm.hostname = "datanode2"
     dn2.vm.network "private_network", ip: "192.168.56.13"

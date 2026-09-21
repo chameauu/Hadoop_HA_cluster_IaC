@@ -12,32 +12,19 @@ hadoop_user: hadoop
 hadoop_group: hadoop
 hadoop_user_password: hadoop
 
-# ZooKeeper configuration
-zookeeper_version: 3.8.3
-zookeeper_download_url: "https://archive.apache.org/dist/zookeeper/zookeeper-{{ zookeeper_version }}/apache-zookeeper-{{ zookeeper_version }}-bin.tar.gz"
-zookeeper_install_dir: /opt/zookeeper
-zookeeper_data_dir: /opt/zookeeper/data
-zookeeper_client_port: 2181
-
 # Cluster configuration
 cluster_name: hadoop-cluster
-nameservice_id: hadoop-cluster
-yarn_cluster_id: yarn-cluster
+# No HA configuration needed for single NameNode
 
 # Network configuration
 master1_ip: 192.168.56.10
-master2_ip: 192.168.56.11
 datanode1_ip: 192.168.56.12
 datanode2_ip: 192.168.56.13
-
-# ZooKeeper quorum
-zookeeper_quorum: "{{ master1_ip }}:{{ zookeeper_client_port }},{{ master2_ip }}:{{ zookeeper_client_port }},{{ datanode1_ip }}:{{ zookeeper_client_port }}"
 
 # HDFS configuration
 dfs_replication: 2
 dfs_namenode_rpc_port: 9000
 dfs_namenode_http_port: 9870
-dfs_journalnode_rpc_port: 8485
 
 # YARN configuration
 yarn_resourcemanager_port: 8032
@@ -47,11 +34,6 @@ yarn_resourcemanager_webapp_port: 8088
 yarn_nodemanager_memory_mb: 1536
 yarn_scheduler_maximum_allocation_mb: 1536
 yarn_scheduler_minimum_allocation_mb: 128
-
-# YARN State Store and Recovery
-yarn_resourcemanager_recovery_enabled: true
-yarn_resourcemanager_store_class: org.apache.hadoop.yarn.server.resourcemanager.recovery.ZKRMStateStore
-yarn_resourcemanager_zk_state_store_parent_path: /rmstore
 
 # YARN Log Aggregation
 yarn_log_aggregation_enabled: true
@@ -71,3 +53,33 @@ mapreduce_jobhistory_address_port: 10020
 mapreduce_jobhistory_webapp_port: 19888
 mapreduce_jobhistory_intermediate_done_dir: /tmp/mr-history/tmp
 mapreduce_jobhistory_done_dir: /tmp/mr-history/done
+
+# Hive configuration
+hive_version: 3.1.3
+hive_download_url: "https://archive.apache.org/dist/hive/hive-{{ hive_version }}/apache-hive-{{ hive_version }}-bin.tar.gz"
+hive_install_dir: /opt/hive
+hive_user: hive
+hive_group: hadoop
+hive_warehouse_dir: /user/hive/warehouse
+hive_scratchdir: /tmp/hive
+hive_metastore_port: 9083
+hive_server2_port: 10000
+hive_server2_webui_port: 10002
+
+# Tez configuration (execution engine for Hive)
+tez_version: 0.10.4
+tez_download_url: "https://archive.apache.org/dist/tez/{{ tez_version }}/apache-tez-{{ tez_version }}-bin.tar.gz"
+tez_install_dir: /opt/tez
+tez_container_size: 1024
+
+# Derby (embedded metastore database for development)
+hive_metastore_db_type: derby
+hive_metastore_connection_url: "jdbc:derby:;databaseName={{ hive_install_dir }}/metastore_db;create=true"
+hive_metastore_driver: org.apache.derby.jdbc.EmbeddedDriver
+
+# For production, use MySQL/PostgreSQL instead:
+# hive_metastore_db_type: mysql
+# hive_metastore_connection_url: "jdbc:mysql://master1:3306/metastore?createDatabaseIfNotExist=true"
+# hive_metastore_driver: com.mysql.jdbc.Driver
+# hive_metastore_db_user: hive
+# hive_metastore_db_password: hivepassword

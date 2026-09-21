@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Hive environment configuration
+export HADOOP_HOME={{ hadoop_install_dir }}
+export HIVE_CONF_DIR={{ hive_install_dir }}/conf
+export HIVE_AUX_JARS_PATH={{ tez_install_dir }}
+
+# Java heap size for Hive CLI
+export HADOOP_HEAPSIZE=512
+
+# Hadoop configuration directory
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop

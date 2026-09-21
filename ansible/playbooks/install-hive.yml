@@ -1,0 +1,6 @@
+---
+- name: Install and Configure Hive
+  hosts: master1
+  become: yes
+  roles:
+    - hive-install

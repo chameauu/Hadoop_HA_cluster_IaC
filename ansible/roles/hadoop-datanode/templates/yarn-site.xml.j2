@@ -2,36 +2,24 @@
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
 <configuration>
     <property>
-        <name>yarn.resourcemanager.ha.enabled</name>
-        <value>true</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.cluster-id</name>
-        <value>{{ yarn_cluster_id }}</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.ha.rm-ids</name>
-        <value>rm1,rm2</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.hostname.rm1</name>
+        <name>yarn.resourcemanager.hostname</name>
         <value>{{ master1_ip }}</value>
     </property>
     <property>
-        <name>yarn.resourcemanager.hostname.rm2</name>
-        <value>{{ master2_ip }}</value>
+        <name>yarn.resourcemanager.address</name>
+        <value>{{ master1_ip }}:{{ yarn_resourcemanager_port }}</value>
     </property>
     <property>
-        <name>yarn.resourcemanager.webapp.address.rm1</name>
+        <name>yarn.resourcemanager.scheduler.address</name>
+        <value>{{ master1_ip }}:{{ yarn_resourcemanager_scheduler_port }}</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.resource-tracker.address</name>
+        <value>{{ master1_ip }}:{{ yarn_resourcemanager_tracker_port }}</value>
+    </property>
+    <property>
+        <name>yarn.resourcemanager.webapp.address</name>
         <value>{{ master1_ip }}:{{ yarn_resourcemanager_webapp_port }}</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.webapp.address.rm2</name>
-        <value>{{ master2_ip }}:{{ yarn_resourcemanager_webapp_port }}</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.zk-address</name>
-        <value>{{ zookeeper_quorum }}</value>
     </property>
     <property>
         <name>yarn.nodemanager.aux-services</name>
@@ -54,42 +42,12 @@
         <value>{{ yarn_scheduler_minimum_allocation_mb }}</value>
     </property>
     <property>
-        <name>yarn.nodemanager.vmem-check-enabled</name>
-        <value>false</value>
-    </property>
-    <property>
-        <name>yarn.nodemanager.linux-container-executor.nonsecure-mode.limit-users</name>
-        <value>false</value>
-    </property>
-    <property>
-        <name>yarn.nodemanager.container-executor.class</name>
-        <value>org.apache.hadoop.yarn.server.nodemanager.DefaultContainerExecutor</value>
-    </property>
-    <!-- ResourceManager State Store for persistence -->
-    <property>
-        <name>yarn.resourcemanager.recovery.enabled</name>
-        <value>{{ yarn_resourcemanager_recovery_enabled }}</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.store.class</name>
-        <value>{{ yarn_resourcemanager_store_class }}</value>
-    </property>
-    <property>
-        <name>yarn.resourcemanager.zk-state-store.parent-path</name>
-        <value>{{ yarn_resourcemanager_zk_state_store_parent_path }}</value>
-    </property>
-    <!-- Job History Server -->
-    <property>
         <name>yarn.log-aggregation-enable</name>
         <value>{{ yarn_log_aggregation_enabled }}</value>
     </property>
     <property>
         <name>yarn.log-aggregation.retain-seconds</name>
         <value>{{ yarn_log_aggregation_retain_seconds }}</value>
-    </property>
-    <property>
-        <name>yarn.log.server.url</name>
-        <value>http://{{ master1_ip }}:{{ mapreduce_jobhistory_webapp_port }}/jobhistory/logs</value>
     </property>
     <property>
         <name>yarn.nodemanager.remote-app-log-dir</name>

@@ -1,20 +1,18 @@
 ---
-# Start Hadoop HA cluster services
+# Start Hadoop 3-Node cluster services
 
-- name: Start NameNodes and ZKFC
-  hosts: namenodes
+- name: Start NameNode
+  hosts: namenode
   become: yes
-  serial: 1
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Check if NameNode is running
-      become_user: "{{ hadoop_user }}"
       shell: jps | grep -q NameNode
       register: nn_running
       failed_when: false
       changed_when: false
 
     - name: Start NameNode
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/hdfs --daemon start namenode
@@ -24,49 +22,31 @@
 
     - name: Wait for NameNode to start
       wait_for:
+        host: "{{ master1_ip }}"
         port: "{{ dfs_namenode_rpc_port }}"
         delay: 5
         timeout: 60
 
-    - name: Check if ZKFC is running
-      become_user: "{{ hadoop_user }}"
-      shell: jps | grep -q DFSZKFailoverController
-      register: zkfc_running
-      failed_when: false
-      changed_when: false
-
-    - name: Start ZKFC
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/hdfs --daemon start zkfc
-      args:
-        executable: /bin/bash
-      when: zkfc_running.rc != 0
-
     - name: Check NameNode status
-      become_user: "{{ hadoop_user }}"
-      shell: "jps | grep -E 'NameNode|DFSZKFailoverController'"
+      shell: "jps | grep NameNode"
       register: nn_status
-      ignore_errors: yes
 
     - name: Display NameNode status
       debug:
-        msg: "{{ inventory_hostname }}: {{ nn_status.stdout_lines }}"
+        msg: "NameNode: {{ nn_status.stdout }}"
 
 - name: Start DataNodes
   hosts: datanodes
   become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Check if DataNode is running
-      become_user: "{{ hadoop_user }}"
       shell: jps | grep -q DataNode
       register: dn_running
       failed_when: false
       changed_when: false
 
     - name: Start DataNode
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/hdfs --daemon start datanode
@@ -77,150 +57,105 @@
     - name: Wait for DataNode to start
       wait_for:
         port: 9866
-        delay: 3
+        host: "{{ ansible_host }}"
+        delay: 5
         timeout: 30
 
     - name: Check DataNode status
-      become_user: "{{ hadoop_user }}"
       shell: "jps | grep DataNode"
       register: dn_status
-      ignore_errors: yes
 
     - name: Display DataNode status
       debug:
         msg: "{{ inventory_hostname }}: {{ dn_status.stdout }}"
 
-- name: Start ResourceManagers
-  hosts: resourcemanagers
+- name: Start ResourceManager
+  hosts: resourcemanager
   become: yes
-  serial: 1
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Check if ResourceManager is running
-      become_user: "{{ hadoop_user }}"
       shell: jps | grep -q ResourceManager
       register: rm_running
       failed_when: false
       changed_when: false
 
     - name: Start ResourceManager
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/yarn --daemon start resourcemanager
       args:
         executable: /bin/bash
       when: rm_running.rc != 0
-      register: rm_start
-      ignore_errors: yes
 
     - name: Wait for ResourceManager to initialize
       pause:
         seconds: 5
-      when: rm_running.rc != 0
 
     - name: Verify ResourceManager process is running
-      become_user: "{{ hadoop_user }}"
-      shell: jps | grep ResourceManager
-      register: rm_verify
-      failed_when: false
-      changed_when: false
+      shell: jps | grep -q ResourceManager
+      register: rm_check
 
     - name: Display ResourceManager process status
       debug:
-        msg: "{{ inventory_hostname }}: ResourceManager {{ 'is running' if rm_verify.rc == 0 else 'FAILED TO START' }}"
-
-    - name: Check ResourceManager logs if not running
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        echo "=== Last 100 lines of ResourceManager log ==="
-        tail -100 {{ hadoop_install_dir }}/logs/yarn-{{ hadoop_user }}-resourcemanager-*.log 2>/dev/null || echo "No log file found"
-      register: rm_logs
-      when: rm_verify.rc != 0
-
-    - name: Display ResourceManager error logs
-      debug:
-        var: rm_logs.stdout_lines
-      when: rm_verify.rc != 0 and rm_logs is defined
-
-    - name: Check YARN HA status
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState {{ 'rm1' if inventory_hostname == 'master1' else 'rm2' }}
-      args:
-        executable: /bin/bash
-      register: rm_ha_status
-      ignore_errors: yes
-      when: rm_verify.rc == 0
-
-    - name: Display ResourceManager HA status
-      debug:
-        msg: "{{ inventory_hostname }}: {{ rm_ha_status.stdout if rm_ha_status.rc == 0 else 'Unable to determine HA status' }}"
-      when: rm_verify.rc == 0
+        msg: "ResourceManager is running"
 
 - name: Start NodeManagers
   hosts: nodemanagers
   become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Check if NodeManager is running
-      become_user: "{{ hadoop_user }}"
       shell: jps | grep -q NodeManager
       register: nm_running
       failed_when: false
       changed_when: false
 
     - name: Start NodeManager
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/yarn --daemon start nodemanager
       args:
         executable: /bin/bash
       when: nm_running.rc != 0
-      register: nm_start
-      failed_when: nm_start.rc != 0 and 'Cannot set priority' not in nm_start.stderr
 
     - name: Wait for NodeManager to start
       wait_for:
         port: 8042
+        host: "{{ ansible_host }}"
         delay: 3
         timeout: 30
 
     - name: Check NodeManager status
-      become_user: "{{ hadoop_user }}"
       shell: "jps | grep NodeManager"
       register: nm_status
-      ignore_errors: yes
 
     - name: Display NodeManager status
       debug:
         msg: "{{ inventory_hostname }}: {{ nm_status.stdout }}"
 
 - name: Start MapReduce Job History Server
-  hosts: master1
+  hosts: namenode
   become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Create HDFS directories for Job History Server
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ mapreduce_jobhistory_intermediate_done_dir }}
-        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ mapreduce_jobhistory_done_dir }}
-        {{ hadoop_install_dir }}/bin/hdfs dfs -chmod -R 1777 /tmp
-        {{ hadoop_install_dir }}/bin/hdfs dfs -chown -R {{ hadoop_user }}:{{ hadoop_group }} /tmp/mr-history
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p /tmp/mr-history/tmp
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p /tmp/mr-history/done
+        {{ hadoop_install_dir }}/bin/hdfs dfs -chmod -R 1777 /tmp/mr-history
       args:
         executable: /bin/bash
       ignore_errors: yes
 
     - name: Check if Job History Server is running
-      become_user: "{{ hadoop_user }}"
       shell: jps | grep -q JobHistoryServer
       register: jhs_running
       failed_when: false
       changed_when: false
 
     - name: Start Job History Server
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/mapred --daemon start historyserver
@@ -231,69 +166,10 @@
     - name: Wait for Job History Server to start
       wait_for:
         port: "{{ mapreduce_jobhistory_webapp_port }}"
-        delay: 3
+        delay: 5
         timeout: 30
-
-    - name: Check Job History Server status
-      become_user: "{{ hadoop_user }}"
-      shell: "jps | grep JobHistoryServer"
-      register: jhs_status
       ignore_errors: yes
 
     - name: Display Job History Server status
       debug:
-        msg: "Job History Server: {{ jhs_status.stdout }}"
-
-- name: Display cluster status
-  hosts: master1
-  become: yes
-  tasks:
-    - name: Check HDFS HA status
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        echo "HDFS NameNode Status:"
-        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn1 2>/dev/null || echo "nn1: unavailable"
-        {{ hadoop_install_dir }}/bin/hdfs haadmin -getServiceState nn2 2>/dev/null || echo "nn2: unavailable"
-      args:
-        executable: /bin/bash
-      register: hdfs_status
-      ignore_errors: yes
-
-    - name: Check YARN HA status
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        echo "YARN ResourceManager Status:"
-        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState rm1 2>/dev/null || echo "rm1: unavailable"
-        {{ hadoop_install_dir }}/bin/yarn rmadmin -getServiceState rm2 2>/dev/null || echo "rm2: unavailable"
-      args:
-        executable: /bin/bash
-      register: yarn_status
-      ignore_errors: yes
-
-    - name: Display cluster status
-      debug:
-        msg: "{{ (hdfs_status.stdout_lines + yarn_status.stdout_lines) | list }}"
-
-    - name: Show web UI URLs
-      debug:
-        msg:
-          - "===== Cluster Started Successfully ====="
-          - ""
-          - "HDFS Web UIs:"
-          - "  Active NameNode:  http://localhost:9870"
-          - "  Standby NameNode: http://localhost:9871"
-          - ""
-          - "YARN Web UIs:"
-          - "  Active ResourceManager:  http://localhost:8088"
-          - "  Standby ResourceManager: http://localhost:8089"
-          - ""
-          - "MapReduce Job History Server:"
-          - "  Job History: http://localhost:19888"
-          - ""
-          - "Check cluster health:"
-          - "  vagrant ssh master1"
-          - "  sudo su - hadoop"
-          - "  hdfs dfsadmin -report"
-          - "  yarn node -list"
+        msg: "Job History Server started on port {{ mapreduce_jobhistory_webapp_port }}"

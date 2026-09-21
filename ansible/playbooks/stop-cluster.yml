@@ -1,25 +1,12 @@
 ---
-# Stop Hadoop HA cluster services
+# Stop Hadoop 3-Node cluster services
 
-- name: Stop NodeManagers
-  hosts: nodemanagers
+- name: Stop Job History Server
+  hosts: namenode
   become: yes
-  tasks:
-    - name: Stop NodeManager
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/yarn --daemon stop nodemanager
-      args:
-        executable: /bin/bash
-      ignore_errors: yes
-
-- name: Stop MapReduce Job History Server
-  hosts: master1
-  become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Stop Job History Server
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/mapred --daemon stop historyserver
@@ -27,12 +14,25 @@
         executable: /bin/bash
       ignore_errors: yes
 
-- name: Stop ResourceManagers
-  hosts: resourcemanagers
+- name: Stop NodeManagers
+  hosts: nodemanagers
   become: yes
+  become_user: "{{ hadoop_user }}"
+  tasks:
+    - name: Stop NodeManager
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/yarn --daemon stop nodemanager
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+- name: Stop ResourceManager
+  hosts: resourcemanager
+  become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Stop ResourceManager
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/yarn --daemon stop resourcemanager
@@ -43,9 +43,9 @@
 - name: Stop DataNodes
   hosts: datanodes
   become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
     - name: Stop DataNode
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/hdfs --daemon stop datanode
@@ -53,21 +53,12 @@
         executable: /bin/bash
       ignore_errors: yes
 
-- name: Stop NameNodes and ZKFC
-  hosts: namenodes
+- name: Stop NameNode
+  hosts: namenode
   become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
-    - name: Stop ZKFC
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/hdfs --daemon stop zkfc
-      args:
-        executable: /bin/bash
-      ignore_errors: yes
-
     - name: Stop NameNode
-      become_user: "{{ hadoop_user }}"
       shell: |
         source /home/{{ hadoop_user }}/.bashrc
         {{ hadoop_install_dir }}/bin/hdfs --daemon stop namenode
@@ -75,30 +66,15 @@
         executable: /bin/bash
       ignore_errors: yes
 
-- name: Stop JournalNodes
-  hosts: journalnodes
+- name: Verify all services stopped
+  hosts: hadoop_cluster
   become: yes
+  become_user: "{{ hadoop_user }}"
   tasks:
-    - name: Stop JournalNode
-      become_user: "{{ hadoop_user }}"
-      shell: |
-        source /home/{{ hadoop_user }}/.bashrc
-        {{ hadoop_install_dir }}/bin/hdfs --daemon stop journalnode
-      args:
-        executable: /bin/bash
-      ignore_errors: yes
+    - name: Check for running Hadoop processes
+      shell: "jps"
+      register: jps_output
 
-- name: Stop ZooKeeper
-  hosts: zookeeper
-  become: yes
-  tasks:
-    - name: Stop ZooKeeper service
-      become_user: "{{ hadoop_user }}"
-      shell: "{{ zookeeper_install_dir }}/bin/zkServer.sh stop"
-      args:
-        executable: /bin/bash
-      ignore_errors: yes
-
-    - name: Confirm cluster stopped
+    - name: Display remaining processes
       debug:
-        msg: "Hadoop HA cluster stopped successfully"
+        msg: "{{ inventory_hostname }}: {{ jps_output.stdout_lines }}"

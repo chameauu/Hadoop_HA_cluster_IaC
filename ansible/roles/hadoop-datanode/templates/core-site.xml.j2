@@ -3,14 +3,32 @@
 <configuration>
     <property>
         <name>fs.defaultFS</name>
-        <value>hdfs://{{ nameservice_id }}</value>
+        <value>hdfs://{{ master1_ip }}:{{ dfs_namenode_rpc_port }}</value>
     </property>
     <property>
         <name>hadoop.tmp.dir</name>
         <value>{{ hadoop_install_dir }}/tmp</value>
     </property>
+    
+    <!-- Hive Proxy User Configuration -->
     <property>
-        <name>ha.zookeeper.quorum</name>
-        <value>{{ zookeeper_quorum }}</value>
+        <name>hadoop.proxyuser.hive.groups</name>
+        <value>*</value>
+        <description>Allow Hive to proxy all groups</description>
+    </property>
+    <property>
+        <name>hadoop.proxyuser.hive.hosts</name>
+        <value>*</value>
+        <description>Allow Hive to proxy from all hosts</description>
+    </property>
+    <property>
+        <name>hadoop.proxyuser.hadoop.groups</name>
+        <value>*</value>
+        <description>Allow hadoop user to proxy all groups</description>
+    </property>
+    <property>
+        <name>hadoop.proxyuser.hadoop.hosts</name>
+        <value>*</value>
+        <description>Allow hadoop user to proxy from all hosts</description>
     </property>
 </configuration>

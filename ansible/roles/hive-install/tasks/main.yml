@@ -1,0 +1,135 @@
+---
+# Hive installation tasks
+
+- name: Create Hive user
+  user:
+    name: "{{ hive_user }}"
+    group: "{{ hive_group }}"
+    home: "/home/{{ hive_user }}"
+    shell: /bin/bash
+    create_home: yes
+
+- name: Check if Hive is already downloaded
+  stat:
+    path: "/vagrant/downloads/apache-hive-{{ hive_version }}-bin.tar.gz"
+  register: hive_archive
+
+- name: Download Hive to shared folder
+  get_url:
+    url: "{{ hive_download_url }}"
+    dest: "/vagrant/downloads/apache-hive-{{ hive_version }}-bin.tar.gz"
+    mode: '0644'
+  when: not hive_archive.stat.exists
+  run_once: true
+
+- name: Check if Hive is already extracted
+  stat:
+    path: "/opt/apache-hive-{{ hive_version }}-bin"
+  register: hive_extracted
+
+- name: Extract Hive
+  unarchive:
+    src: "/vagrant/downloads/apache-hive-{{ hive_version }}-bin.tar.gz"
+    dest: /opt/
+    remote_src: yes
+  when: not hive_extracted.stat.exists
+
+- name: Create Hive symlink
+  file:
+    src: "/opt/apache-hive-{{ hive_version }}-bin"
+    dest: "{{ hive_install_dir }}"
+    state: link
+
+- name: Check if Tez is already downloaded
+  stat:
+    path: "/vagrant/downloads/apache-tez-{{ tez_version }}-bin.tar.gz"
+  register: tez_archive
+
+- name: Download Tez to shared folder
+  get_url:
+    url: "{{ tez_download_url }}"
+    dest: "/vagrant/downloads/apache-tez-{{ tez_version }}-bin.tar.gz"
+    mode: '0644'
+  when: not tez_archive.stat.exists
+  run_once: true
+
+- name: Check if Tez is already extracted
+  stat:
+    path: "/opt/apache-tez-{{ tez_version }}-bin"
+  register: tez_extracted
+
+- name: Extract Tez
+  unarchive:
+    src: "/vagrant/downloads/apache-tez-{{ tez_version }}-bin.tar.gz"
+    dest: /opt/
+    remote_src: yes
+  when: not tez_extracted.stat.exists
+
+- name: Create Tez symlink
+  file:
+    src: "/opt/apache-tez-{{ tez_version }}-bin"
+    dest: "{{ tez_install_dir }}"
+    state: link
+
+- name: Create Hive directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ hive_user }}"
+    group: "{{ hive_group }}"
+    mode: '0755'
+  loop:
+    - "{{ hive_install_dir }}/tmp"
+    - "{{ hive_install_dir }}/logs"
+    - "/home/{{ hive_user }}/.hivehistory"
+
+- name: Set Hive directory ownership
+  file:
+    path: "/opt/apache-hive-{{ hive_version }}-bin"
+    owner: "{{ hive_user }}"
+    group: "{{ hive_group }}"
+    recurse: yes
+
+- name: Set Tez directory ownership
+  file:
+    path: "/opt/apache-tez-{{ tez_version }}-bin"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    recurse: yes
+
+- name: Configure Hive environment in .bashrc
+  blockinfile:
+    path: "/home/{{ hive_user }}/.bashrc"
+    block: |
+      export JAVA_HOME={{ java_home }}
+      export HADOOP_HOME={{ hadoop_install_dir }}
+      export HIVE_HOME={{ hive_install_dir }}
+      export TEZ_HOME={{ tez_install_dir }}
+      export HIVE_CONF_DIR=$HIVE_HOME/conf
+      export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$HIVE_HOME/bin
+      export CLASSPATH=$CLASSPATH:$HADOOP_HOME/lib/*:$TEZ_HOME/*:$TEZ_HOME/lib/*
+    marker: "# {mark} ANSIBLE MANAGED HIVE ENVIRONMENT"
+
+- name: Deploy hive-site.xml
+  template:
+    src: hive-site.xml.j2
+    dest: "{{ hive_install_dir }}/conf/hive-site.xml"
+    owner: "{{ hive_user }}"
+    group: "{{ hive_group }}"
+    mode: '0644'
+
+- name: Deploy hive-env.sh
+  template:
+    src: hive-env.sh.j2
+    dest: "{{ hive_install_dir }}/conf/hive-env.sh"
+    owner: "{{ hive_user }}"
+    group: "{{ hive_group }}"
+    mode: '0755'
+
+- name: Deploy tez-site.xml
+  template:
+    src: tez-site.xml.j2
+    dest: "{{ tez_install_dir }}/conf/tez-site.xml"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: '0644'

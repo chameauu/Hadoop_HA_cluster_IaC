@@ -1,0 +1,69 @@
+---
+- name: Start Hive Metastore
+  hosts: master1
+  become: yes
+  become_user: "{{ hive_user }}"
+  tasks:
+    - name: Check if Metastore is running
+      shell: "pgrep -f 'org.apache.hadoop.hive.metastore.HiveMetaStore'"
+      register: metastore_running
+      ignore_errors: yes
+
+    - name: Start Hive Metastore
+      shell: |
+        source /home/{{ hive_user }}/.bashrc
+        nohup {{ hive_install_dir }}/bin/hive --service metastore > {{ hive_install_dir }}/logs/metastore.log 2>&1 &
+      args:
+        executable: /bin/bash
+      when: metastore_running.rc != 0
+
+    - name: Wait for Metastore to start
+      wait_for:
+        host: "{{ master1_ip }}"
+        port: "{{ hive_metastore_port }}"
+        delay: 5
+        timeout: 60
+
+    - name: Check Metastore process
+      shell: "jps | grep -i metastore || echo 'Not running yet'"
+      register: metastore_status
+
+    - name: Display Metastore status
+      debug:
+        msg: "Hive Metastore started on {{ master1_ip }}:{{ hive_metastore_port }}"
+
+- name: Start HiveServer2
+  hosts: master1
+  become: yes
+  become_user: "{{ hive_user }}"
+  tasks:
+    - name: Check if HiveServer2 is running
+      shell: "pgrep -f 'org.apache.hive.service.server.HiveServer2'"
+      register: hiveserver2_running
+      ignore_errors: yes
+
+    - name: Start HiveServer2
+      shell: |
+        source /home/{{ hive_user }}/.bashrc
+        nohup {{ hive_install_dir }}/bin/hive --service hiveserver2 > {{ hive_install_dir }}/logs/hiveserver2.log 2>&1 &
+      args:
+        executable: /bin/bash
+      when: hiveserver2_running.rc != 0
+
+    - name: Wait for HiveServer2 to start
+      wait_for:
+        host: "{{ master1_ip }}"
+        port: "{{ hive_server2_port }}"
+        delay: 10
+        timeout: 120
+
+    - name: Check HiveServer2 process
+      shell: "jps"
+      register: hiveserver2_status
+
+    - name: Display HiveServer2 status
+      debug:
+        msg: 
+          - "HiveServer2 started on {{ master1_ip }}:{{ hive_server2_port }}"
+          - "Web UI: http://{{ master1_ip }}:{{ hive_server2_webui_port }}"
+          - "Processes: {{ hiveserver2_status.stdout_lines }}"

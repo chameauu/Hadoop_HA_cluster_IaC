@@ -1,0 +1,33 @@
+---
+- name: Stop Hive Services
+  hosts: master1
+  become: yes
+  become_user: "{{ hive_user }}"
+  tasks:
+    - name: Stop HiveServer2
+      shell: "pkill -f 'org.apache.hive.service.server.HiveServer2'"
+      ignore_errors: yes
+
+    - name: Wait for HiveServer2 to stop
+      pause:
+        seconds: 5
+
+    - name: Stop Hive Metastore
+      shell: "pkill -f 'org.apache.hadoop.hive.metastore.HiveMetaStore'"
+      ignore_errors: yes
+
+    - name: Wait for Metastore to stop
+      pause:
+        seconds: 3
+
+    - name: Verify services stopped
+      shell: "jps"
+      register: jps_output
+
+    - name: Display running Java processes
+      debug:
+        msg: "Remaining processes: {{ jps_output.stdout_lines }}"
+
+    - name: Confirm Hive services stopped
+      debug:
+        msg: "Hive services stopped successfully"

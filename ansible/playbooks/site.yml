@@ -1,5 +1,5 @@
 ---
-# Main playbook to set up Hadoop HA cluster
+# Main playbook to set up Hadoop 3-Node cluster
 
 - name: Setup common configuration on all nodes
   hosts: all
@@ -7,20 +7,14 @@
   roles:
     - common
 
-- name: Setup ZooKeeper cluster
-  hosts: zookeeper
-  become: yes
-  roles:
-    - zookeeper
-
 - name: Install Hadoop on all nodes
   hosts: hadoop_cluster
   become: yes
   roles:
     - hadoop-install
 
-- name: Configure NameNodes
-  hosts: namenodes
+- name: Configure NameNode
+  hosts: namenode
   become: yes
   roles:
     - hadoop-namenode
@@ -31,12 +25,6 @@
   roles:
     - hadoop-datanode
 
-- name: Setup Hadoop HA components
-  hosts: hadoop_cluster
-  become: yes
-  roles:
-    - hadoop-ha
-
 - name: Display cluster information
   hosts: localhost
   gather_facts: no
@@ -44,17 +32,17 @@
     - name: Show completion message
       debug:
         msg:
-          - "===== HADOOP HA CLUSTER SETUP COMPLETE ====="
+          - "===== HADOOP 3-NODE CLUSTER SETUP COMPLETE ====="
           - ""
           - "Next steps to start the cluster:"
           - ""
-          - "1. Start ZooKeeper: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/start-zookeeper.yml"
-          - "2. Start JournalNodes: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/start-journalnodes.yml"
-          - "3. Initialize HA: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/initialize-ha.yml"
-          - "4. Start cluster: ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/start-cluster.yml"
+          - "1. Format NameNode (first time only): make format-namenode"
+          - "2. Start cluster: make start"
           - ""
           - "Web UIs:"
-          - "- Active NameNode: http://localhost:9870"
-          - "- Standby NameNode: http://localhost:9871"
-          - "- Active ResourceManager: http://localhost:8088"
-          - "- Standby ResourceManager: http://localhost:8089"
+          - "- NameNode: http://localhost:9870"
+          - "- ResourceManager: http://localhost:8088"
+          - "- Job History: http://localhost:19888"
+          - ""
+          - "Hive (after installation):"
+          - "- HiveServer2 Web UI: http://localhost:10002"

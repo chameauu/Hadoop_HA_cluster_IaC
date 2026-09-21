@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>tez.lib.uris</name>
+        <value>hdfs://{{ master1_ip }}:{{ dfs_namenode_rpc_port }}/apps/tez/apache-tez-{{ tez_version }}-bin.tar.gz</value>
+        <description>Tez library URI in HDFS</description>
+    </property>
+
+    <property>
+        <name>tez.use.cluster.hadoop-libs</name>
+        <value>true</value>
+        <description>Use Hadoop libraries from the cluster</description>
+    </property>
+
+    <property>
+        <name>tez.am.resource.memory.mb</name>
+        <value>{{ tez_container_size }}</value>
+        <description>Tez ApplicationMaster memory in MB</description>
+    </property>
+
+    <property>
+        <name>tez.task.resource.memory.mb</name>
+        <value>{{ tez_container_size }}</value>
+        <description>Tez task memory in MB</description>
+    </property>
+</configuration>

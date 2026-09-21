@@ -1,0 +1,93 @@
+---
+- name: Initialize Hive on HDFS
+  hosts: master1
+  become: yes
+  become_user: "{{ hadoop_user }}"
+  tasks:
+    - name: Create Hive warehouse directory in HDFS
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ hive_warehouse_dir }}
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ hive_warehouse_dir }}/external
+        {{ hadoop_install_dir }}/bin/hdfs dfs -chmod -R 1777 {{ hive_warehouse_dir }}
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Create Hive scratch directory in HDFS
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p {{ hive_scratchdir }}
+        {{ hadoop_install_dir }}/bin/hdfs dfs -chmod -R 1777 {{ hive_scratchdir }}
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Create Tez directory in HDFS
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -mkdir -p /apps/tez
+      args:
+        executable: /bin/bash
+      ignore_errors: yes
+
+    - name: Check if Tez tarball exists in HDFS
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -test -f /apps/tez/apache-tez-{{ tez_version }}-bin.tar.gz
+      args:
+        executable: /bin/bash
+      register: tez_exists
+      ignore_errors: yes
+
+    - name: Upload Tez tarball to HDFS
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -put /vagrant/downloads/apache-tez-{{ tez_version }}-bin.tar.gz /apps/tez/
+        {{ hadoop_install_dir }}/bin/hdfs dfs -chmod -R 755 /apps/tez
+      args:
+        executable: /bin/bash
+      when: tez_exists.rc != 0
+
+    - name: Display HDFS directories created
+      shell: |
+        source /home/{{ hadoop_user }}/.bashrc
+        {{ hadoop_install_dir }}/bin/hdfs dfs -ls /user/hive
+        {{ hadoop_install_dir }}/bin/hdfs dfs -ls /apps/tez
+      args:
+        executable: /bin/bash
+      register: hdfs_dirs
+
+    - name: Show HDFS structure
+      debug:
+        var: hdfs_dirs.stdout_lines
+
+- name: Initialize Hive Metastore Schema
+  hosts: master1
+  become: yes
+  become_user: "{{ hive_user }}"
+  tasks:
+    - name: Check if metastore is already initialized
+      stat:
+        path: "{{ hive_install_dir }}/metastore_db"
+      register: metastore_db
+
+    - name: Initialize Hive metastore schema
+      shell: |
+        source /home/{{ hive_user }}/.bashrc
+        {{ hive_install_dir }}/bin/schematool -dbType derby -initSchema
+      args:
+        executable: /bin/bash
+      when: not metastore_db.stat.exists
+      register: schema_init
+      ignore_errors: yes
+
+    - name: Display schema initialization result
+      debug:
+        var: schema_init.stdout_lines
+      when: schema_init is defined and schema_init.stdout_lines is defined
+
+    - name: Display metastore status
+      debug:
+        msg: "Hive metastore schema initialized successfully"
+      when: not metastore_db.stat.exists

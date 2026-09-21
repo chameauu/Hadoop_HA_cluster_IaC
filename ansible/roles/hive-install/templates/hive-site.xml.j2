@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <!-- Metastore Configuration -->
+    <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>{{ hive_metastore_connection_url }}</value>
+        <description>JDBC connection URL for metastore database</description>
+    </property>
+
+    <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>{{ hive_metastore_driver }}</value>
+        <description>JDBC driver class</description>
+    </property>
+
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://{{ master1_ip }}:{{ hive_metastore_port }}</value>
+        <description>Metastore server URI</description>
+    </property>
+
+    <property>
+        <name>hive.metastore.warehouse.dir</name>
+        <value>{{ hive_warehouse_dir }}</value>
+        <description>Hive warehouse directory in HDFS</description>
+    </property>
+
+    <property>
+        <name>hive.metastore.warehouse.external.dir</name>
+        <value>{{ hive_warehouse_dir }}/external</value>
+        <description>External table warehouse directory</description>
+    </property>
+
+    <!-- HiveServer2 Configuration -->
+    <property>
+        <name>hive.server2.thrift.bind.host</name>
+        <value>{{ master1_ip }}</value>
+        <description>HiveServer2 bind address</description>
+    </property>
+
+    <property>
+        <name>hive.server2.thrift.port</name>
+        <value>{{ hive_server2_port }}</value>
+        <description>HiveServer2 Thrift port</description>
+    </property>
+
+    <property>
+        <name>hive.server2.webui.host</name>
+        <value>0.0.0.0</value>
+        <description>HiveServer2 Web UI host</description>
+    </property>
+
+    <property>
+        <name>hive.server2.webui.port</name>
+        <value>{{ hive_server2_webui_port }}</value>
+        <description>HiveServer2 Web UI port</description>
+    </property>
+
+    <!-- Execution Engine - Tez -->
+    <property>
+        <name>hive.execution.engine</name>
+        <value>tez</value>
+        <description>Execution engine: mr, tez, or spark</description>
+    </property>
+
+    <property>
+        <name>tez.lib.uris</name>
+        <value>hdfs://{{ master1_ip }}:{{ dfs_namenode_rpc_port }}/apps/tez/apache-tez-{{ tez_version }}-bin.tar.gz</value>
+        <description>Tez library location in HDFS</description>
+    </property>
+
+    <property>
+        <name>tez.use.cluster.hadoop-libs</name>
+        <value>true</value>
+        <description>Use Hadoop libraries from cluster</description>
+    </property>
+
+    <!-- Scratch Directory -->
+    <property>
+        <name>hive.exec.scratchdir</name>
+        <value>{{ hive_scratchdir }}</value>
+        <description>Scratch directory for Hive jobs</description>
+    </property>
+
+    <!-- Performance Tuning -->
+    <property>
+        <name>hive.tez.container.size</name>
+        <value>{{ tez_container_size }}</value>
+        <description>Tez container size in MB</description>
+    </property>
+
+    <property>
+        <name>hive.auto.convert.join</name>
+        <value>true</value>
+        <description>Enable auto map join</description>
+    </property>
+
+    <property>
+        <name>hive.vectorized.execution.enabled</name>
+        <value>true</value>
+        <description>Enable vectorized query execution</description>
+    </property>
+
+    <!-- Authentication -->
+    <property>
+        <name>hive.server2.authentication</name>
+        <value>NONE</value>
+        <description>Authentication mode: NONE, KERBEROS, LDAP, PAM, CUSTOM</description>
+    </property>
+
+    <!-- Logging -->
+    <property>
+        <name>hive.server2.logging.operation.enabled</name>
+        <value>true</value>
+        <description>Enable HiveServer2 operation logging</description>
+    </property>
+
+    <property>
+        <name>hive.server2.logging.operation.log.location</name>
+        <value>{{ hive_install_dir }}/logs</value>
+        <description>HiveServer2 operation log location</description>
+    </property>
+</configuration>
