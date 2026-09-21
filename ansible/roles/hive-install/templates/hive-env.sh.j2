@@ -5,8 +5,12 @@ export HADOOP_HOME={{ hadoop_install_dir }}
 export HIVE_CONF_DIR={{ hive_install_dir }}/conf
 export HIVE_AUX_JARS_PATH={{ tez_install_dir }}
 
-# Java heap size for Hive CLI
-export HADOOP_HEAPSIZE=512
+# Java heap size for Hive services (in MB)
+# Reduced for limited memory environments
+export HADOOP_HEAPSIZE=256
+export HIVE_METASTORE_HADOOP_OPTS="-Xmx256m"
+export HIVE_SERVER2_HADOOP_OPTS="-Xmx256m"
+export HIVE_CLIENT_OPTS="-Xmx128m"
 
 # Hadoop configuration directory
 export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop

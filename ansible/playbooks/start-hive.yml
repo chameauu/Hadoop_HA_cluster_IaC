@@ -11,8 +11,13 @@
 
     - name: Start Hive Metastore
       shell: |
-        source /home/{{ hive_user }}/.bashrc
-        nohup {{ hive_install_dir }}/bin/hive --service metastore > {{ hive_install_dir }}/logs/metastore.log 2>&1 &
+        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+        export HADOOP_HOME=/opt/hadoop
+        export HIVE_HOME={{ hive_install_dir }}
+        export TEZ_HOME=/opt/tez
+        export HIVE_CONF_DIR=$HIVE_HOME/conf
+        export PATH=$PATH:$HADOOP_HOME/bin:$HIVE_HOME/bin
+        nohup $HIVE_HOME/bin/hive --service metastore > {{ hive_install_dir }}/logs/metastore.log 2>&1 &
       args:
         executable: /bin/bash
       when: metastore_running.rc != 0
@@ -44,8 +49,13 @@
 
     - name: Start HiveServer2
       shell: |
-        source /home/{{ hive_user }}/.bashrc
-        nohup {{ hive_install_dir }}/bin/hive --service hiveserver2 > {{ hive_install_dir }}/logs/hiveserver2.log 2>&1 &
+        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+        export HADOOP_HOME=/opt/hadoop
+        export HIVE_HOME={{ hive_install_dir }}
+        export TEZ_HOME=/opt/tez
+        export HIVE_CONF_DIR=$HIVE_HOME/conf
+        export PATH=$PATH:$HADOOP_HOME/bin:$HIVE_HOME/bin
+        nohup $HIVE_HOME/bin/hive --service hiveserver2 > {{ hive_install_dir }}/logs/hiveserver2.log 2>&1 &
       args:
         executable: /bin/bash
       when: hiveserver2_running.rc != 0
